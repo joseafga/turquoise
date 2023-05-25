@@ -1,10 +1,10 @@
 # Turquoise
 
-![Turquoise Profile Picture](./img/profile.png?raw=true "Turquoise Profile Picture")
+![Turquoise Profile Picture](./img/profile_small.png?raw=true "Turquoise Profile Picture")
 
 Telegram bot for YouTube notifications and fun.
 
-**Blue** (Telegram) + **Green** (Midori) + **Crystal** (Programming Language) = **Torquoise**
+**Blue** (Telegram) + **Green** (Midori) + **Crystal** (Programming Language) = **Turquoise**
 
 ## Installation
 
