@@ -1,0 +1,22 @@
+version: 2.0
+shards:
+  ameba:
+    git: https://github.com/crystal-ameba/ameba.git
+    version: 1.4.3
+
+  db:
+    git: https://github.com/crystal-lang/crystal-db.git
+    version: 0.11.0
+
+  dotenv:
+    git: https://github.com/gdotdesign/cr-dotenv.git
+    version: 1.0.0
+
+  http_proxy:
+    git: https://github.com/mamantoha/http_proxy.git
+    version: 0.10.1+git.commit.406a462c884ff519a11f53d4d46e65925660d7a7
+
+  tourmaline:
+    git: https://github.com/protoncr/tourmaline.git
+    version: 0.29.0+git.commit.82c2b38e75d6d74676db7d162a86a4b277598f02
+

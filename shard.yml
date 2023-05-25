@@ -1,0 +1,25 @@
+name: turquoise
+version: 0.1.0
+
+authors:
+  - José Almeida <jose.afga@gmail.com>
+
+targets:
+  turquoise:
+    main: src/turquoise.cr
+
+dependencies:
+  tourmaline:
+    github: protoncr/tourmaline
+    branch: master
+  dotenv:
+    github: gdotdesign/cr-dotenv
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
+    version: ~> 1.4.0
+
+crystal: 1.8.0
+
+license: MIT
