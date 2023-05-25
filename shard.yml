@@ -14,8 +14,16 @@ dependencies:
     branch: master
   dotenv:
     github: gdotdesign/cr-dotenv
+  pg:
+    github: will/crystal-pg
+  granite:
+    github: amberframework/granite
+    branch: master
 
 development_dependencies:
+  micrate:
+    github: amberframework/micrate
+    branch: master
   ameba:
     github: crystal-ameba/ameba
     version: ~> 1.4.0

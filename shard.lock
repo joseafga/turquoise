@@ -12,11 +12,31 @@ shards:
     git: https://github.com/gdotdesign/cr-dotenv.git
     version: 1.0.0
 
+  granite:
+    git: https://github.com/amberframework/granite.git
+    version: 0.23.1+git.commit.5afa787eef71224cdbde6b7d6e894471720caed7
+
   http_proxy:
     git: https://github.com/mamantoha/http_proxy.git
     version: 0.10.1+git.commit.406a462c884ff519a11f53d4d46e65925660d7a7
 
+  micrate:
+    git: https://github.com/amberframework/micrate.git
+    version: 0.14.0+git.commit.7e4496f5a10cf5d8bf3573fe82014802ad5139d0
+
+  mysql:
+    git: https://github.com/crystal-lang/crystal-mysql.git
+    version: 0.14.0
+
+  pg:
+    git: https://github.com/will/crystal-pg.git
+    version: 0.26.0
+
+  sqlite3:
+    git: https://github.com/crystal-lang/crystal-sqlite3.git
+    version: 0.19.0
+
   tourmaline:
     git: https://github.com/protoncr/tourmaline.git
-    version: 0.29.0+git.commit.82c2b38e75d6d74676db7d162a86a4b277598f02
+    version: 0.29.0+git.commit.f8de7f681869eace3074a36095c6e7420082131d
 

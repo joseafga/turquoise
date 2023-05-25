@@ -3,6 +3,12 @@ require "./turquoise/pubsubhubbub"
 require "./turquoise/bot"
 
 Dotenv.load? ".env"
+Granite::Connections << Granite::Adapter::Pg.new(name: "pg", url: ENV["DATABASE_URL"])
+
+require "db"
+require "pg"
+require "granite/adapter/pg"
+require "./turquoise/models/*"
 
 # TODO: Write documentation for `Turquoise`
 module Turquoise
@@ -17,8 +23,7 @@ module Turquoise
   )
 end
 
-
-###### TODO
+# ##### TODO
 # spawn do
 # sub.subscribe
 # server = HTTP::Server.new([
@@ -31,7 +36,7 @@ end
 #   HTTP::CompressHandler.new,
 # ])
 
-# address = server.bind_tcp ENV["PORT"].to_i
+# address = server.bind_tcp ENV["SERVER_PORT"].to_i
 # Turquoise::Log.info { "Listening on http://#{address}" }
 # server.listen
 # end
