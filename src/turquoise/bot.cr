@@ -1,3 +1,5 @@
+require "tourmaline"
+
 module Turquoise
   class Bot < Tourmaline::Client
     @@commands = [] of Turquoise::Bot ->

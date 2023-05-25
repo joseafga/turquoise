@@ -1,9 +1,9 @@
-CAT_API_URL = "https://api.thecatapi.com/v1/images/search"
-DOG_API_URL = "https://api.thedogapi.com/v1/images/search"
+API_URL_CAT = "https://api.thecatapi.com/v1/images/search"
+API_URL_DOG = "https://api.thedogapi.com/v1/images/search"
 
 Turquoise::Bot.command do |bot|
   cmd = Tourmaline::CommandHandler.new(["gato", "cachorro"]) do |ctx|
-    response = HTTP::Client.get ctx.command! == "gato" ? CAT_API_URL : DOG_API_URL
+    response = HTTP::Client.get ctx.command! == "gato" ? API_URL_CAT : API_URL_DOG
     data = Array(Hash(String, String | UInt16)).from_json(response.body)
     image = data.first["url"].to_s
 

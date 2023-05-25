@@ -1,5 +1,4 @@
 require "dotenv"
-require "tourmaline"
 require "./turquoise/pubsubhubbub"
 require "./turquoise/bot"
 
@@ -47,7 +46,7 @@ bot.on :update do |ctx|
 end
 
 spawn do
-  bot.send_message(ENV["BOT_OWNER"], text: "Estou pronta!")
+  bot.send_message(ENV["BOT_OWNER"], text: "Prontinha!")
 end
 
 bot.poll
