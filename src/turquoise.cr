@@ -41,15 +41,17 @@ end
 # server.listen
 # end
 
-# sleep 0.1
-
 bot = Turquoise::Bot.new(ENV["BOT_TOKEN"])
 bot.register_commands
 
-bot.on :update do |ctx|
-  puts ctx.text
+# Logging
+bot.on :message do |ctx|
+  Turquoise::Log.debug { "Message from: #{ctx.message!.from.try &.id}, chat: #{ctx.message!.chat.try &.id} -> #{ctx.message!.text}" }
+rescue
+  Turquoise::Log.error { "Not possible to get message object: #{ctx.update.to_json}" }
 end
 
+# TODO: Startup message to owner
 spawn do
   bot.send_message(ENV["BOT_OWNER"], text: "Prontinha!")
 end
