@@ -1,6 +1,4 @@
 require "dotenv"
-require "./turquoise/pubsubhubbub"
-require "./turquoise/bot"
 
 Dotenv.load? ".env"
 Granite::Connections << Granite::Adapter::Pg.new(name: "pg", url: ENV["DATABASE_URL"])
@@ -9,6 +7,8 @@ require "db"
 require "pg"
 require "granite/adapter/pg"
 require "./turquoise/models/*"
+require "./turquoise/pubsubhubbub"
+require "./turquoise/bot"
 
 # TODO: Write documentation for `Turquoise`
 module Turquoise
@@ -21,6 +21,22 @@ module Turquoise
     ENV["HUB_CALLBACK"],
     ENV["HUB_SECRET"]?
   )
+
+  bot = Bot.new(ENV["BOT_TOKEN"])
+  bot.register_commands
+
+  # Persist
+  bot.on :update do |ctx|
+    persist_user(ctx.update.users)
+    persist_chat(ctx.update.chats)
+  end
+
+  # TODO: Startup message to owner
+  # spawn do
+  #   bot.send_message(ENV["BOT_OWNER"], text: "Prontinha!")
+  # end
+
+  bot.poll
 end
 
 # ##### TODO
@@ -40,20 +56,3 @@ end
 # Turquoise::Log.info { "Listening on http://#{address}" }
 # server.listen
 # end
-
-bot = Turquoise::Bot.new(ENV["BOT_TOKEN"])
-bot.register_commands
-
-# Logging
-bot.on :message do |ctx|
-  Turquoise::Log.debug { "Message from: #{ctx.message!.from.try &.id}, chat: #{ctx.message!.chat.try &.id} -> #{ctx.message!.text}" }
-rescue
-  Turquoise::Log.error { "Not possible to get message object: #{ctx.update.to_json}" }
-end
-
-# TODO: Startup message to owner
-spawn do
-  bot.send_message(ENV["BOT_OWNER"], text: "Prontinha!")
-end
-
-bot.poll

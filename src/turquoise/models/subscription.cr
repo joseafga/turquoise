@@ -1,12 +1,16 @@
-class Subscription < Granite::Base
-  table subscriptions
+module Turquoise
+  module Models
+    class Subscription < Granite::Base
+      table subscriptions
 
-  belongs_to :user
-  belongs_to :chat
+      belongs_to :user
+      belongs_to :chat
 
-  column id : Int64, primary: true
-  column topic : String?
-  column is_active : Bool = true
+      column id : Int64, primary: true
+      column topic : String?
+      column is_active : Bool = true
 
-  timestamps
+      timestamps
+    end
+  end
 end
