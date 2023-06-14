@@ -1,12 +1,12 @@
-Turquoise::Bot.command do |bot|
-  cmd = Tourmaline::CommandHandler.new("sobre") do |ctx|
+module Turquoise
+  about = Tourmaline::CommandHandler.new("sobre") do |ctx|
     text = "Olá, eu sou a *Turquesa*, um bot do Telegram super antenada nas últimas \
-      novidades do YouTube! Além disso, adoro me divertir com outras atividades! \
-      🥰\n\n\
-      Conheça também meu [repositório no GitHub](https://github.com/joseafga/turquoise)."
-    
+            novidades do YouTube! Além disso, adoro me divertir com outras atividades! \
+            🥰\n\n\
+            Conheça também meu [repositório no GitHub](https://github.com/joseafga/turquoise)."
+
     ctx.reply(text, disable_web_page_preview: true)
   end
 
-  bot.register cmd
+  Bot.register about
 end

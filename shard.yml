@@ -7,6 +7,8 @@ authors:
 targets:
   turquoise:
     main: src/turquoise.cr
+  worker:
+    main: src/worker.cr
 
 dependencies:
   tourmaline:
@@ -19,6 +21,9 @@ dependencies:
   granite:
     github: amberframework/granite
     branch: master
+  mosquito:
+    github: mosquito-cr/mosquito
+    branch: master
 
 development_dependencies:
   micrate:
@@ -28,6 +33,6 @@ development_dependencies:
     github: crystal-ameba/ameba
     version: ~> 1.4.0
 
-crystal: 1.8.0
+crystal: 1.8.2
 
 license: MIT
