@@ -15,11 +15,6 @@ CREATE TABLE subscriptions (
   FOREIGN KEY(chat_id) REFERENCES chats(id)
 );
 
-CREATE INDEX user_id_idx ON subscriptions (user_id);
-CREATE INDEX chat_id_idx ON subscriptions (chat_id);
-
 -- +micrate Down
 -- SQL section 'Down' is executed when this migration is rolled back
-DROP INDEX user_id_idx;
-DROP INDEX chat_id_idx;
 DROP TABLE subscriptions;
