@@ -2,7 +2,7 @@
 -- SQL in section 'Up' is executed when this migration is applied
 CREATE TABLE subscriptions (
   id BIGSERIAL PRIMARY KEY,
-  topic VARCHAR,
+  topic VARCHAR NOT NULL,
   is_active BOOLEAN NOT NULL,
 
   user_id BIGSERIAL,

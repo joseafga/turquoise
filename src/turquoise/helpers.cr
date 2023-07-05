@@ -3,6 +3,23 @@ module Turquoise
     extend Tourmaline::Helpers
     extend self
 
+    # Basically Tourmaline::Server without a new HTTP::Server
+    def handle_webhook(context)
+      Fiber.current.telegram_bot_server_http_context = context
+
+      return unless context.request.method == "POST"
+      return unless context.request.path == ENV["BOT_WEBHOOK_PATH"]
+
+      if body = context.request.body
+        update = Tourmaline::Update.from_json(body)
+        Bot.dispatcher.process(update)
+      end
+    rescue ex
+      Log.error(exception: ex) { "Server error" }
+    ensure
+      Fiber.current.telegram_bot_server_http_context = nil
+    end
+
     # Save or update Users to database
     def persist_user(users : Array)
       models = [] of Models::User

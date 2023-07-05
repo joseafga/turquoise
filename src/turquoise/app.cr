@@ -8,21 +8,23 @@ Granite::Connections << Granite::Adapter::Pg.new(name: "pg", url: ENV["DATABASE_
 
 require "granite"
 require "granite/adapter/pg"
+require "./pubsubhubbub"
 require "./helpers"
 require "./models/*"
-require "./pubsubhubbub"
 
 # TODO: Write documentation for `Turquoise`
 module Turquoise
-  VERSION    = "0.1.0"
-  USERAGENT  = "Turquoise/#{VERSION}"
-  Log        = ::Log.for("turquoise")
-  Bot        = Tourmaline::Client.new(ENV["BOT_TOKEN"])
-  Subscriber = PubSubHubbub::Subscriber.new(
-    "https://www.youtube.com/xml/feeds/videos.xml?channel_id=#{ENV["HUB_CHANNEL_ID"]}",
-    ENV["HUB_CALLBACK"],
-    ENV["HUB_SECRET"]?
-  )
+  VERSION     = "0.1.0"
+  USERAGENT   = "Turquoise/#{VERSION}"
+  Log         = ::Log.for("turquoise")
+  Bot         = Tourmaline::Client.new(ENV["BOT_TOKEN"])
+
+  Bot.set_webhook File.join(ENV["HOST_URL"], ENV["BOT_WEBHOOK_PATH"])
+
+  PubSubHubbub.configure do |settings|
+    settings.host = ENV["HOST_URL"]
+    settings.path = ENV["HUB_WEBHOOK_PATH"]
+  end
 
   Mosquito.configure do |settings|
     settings.redis_url = ENV["REDIS_URL"]

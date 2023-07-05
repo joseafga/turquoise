@@ -1,12 +1,10 @@
-# Handle requests from the hub
+# Handle requests from the hub.
 #
 # ```
 # require "http"
 #
 # server = HTTP::Server.new([
-#   PubSubHubbub::SubscriberHandler.new do |xml|
-#     puts xml
-#   end,
+#   PubSubHubbub::SubscriberHandler(MySubscriber).new,
 # ])
 #
 # address = server.bind_tcp 8080
@@ -14,49 +12,59 @@
 # server.listen
 # ```
 module PubSubHubbub
-  class SubscriberHandler
+  class SubscriberHandler(T)
     include HTTP::Handler
 
-    # Initialize without a block. It will be able to do verification challenge but will do
-    # nothing with hub notifications
-    def initialize
-      @notification = nil
-    end
-
-    # Every new notification from the hub will be passed for the block as xml
-    def initialize(&@notification : String ->)
-    end
-
     def call(context) : Nil
-      req = context.request
-      res = context.response
-      res.headers["User-Agent"] = Turquoise::USERAGENT
+      unless context.request.path == PubSubHubbub.config.path
+        call_next(context)
+        return
+      end
 
       # Check if is a verification or notification
-      case req.method
+      case context.request.method
       when "GET"
+        # The subscriber MUST confirm that the hub.topic corresponds to a pending subscription or
+        # unsubscription that it wishes to carry out. If so, the subscriber MUST respond with an
+        # HTTP success (2xx) code with a response body equal to the hub.challenge parameter.
         begin
-          instance = Subscriber.find_instance(req.query_params["hub.topic"])
-          instance.challenge_verification(res, req.query_params)
+          Turquoise::Log.debug { "Challenge - #{context.request.query_params}" }
+          subscriber = T.find_subscriber!(context.request.query_params["hub.topic"])
+          answer = subscriber.challenge_verification(context.request.query_params)
+
+          context.response.content_type = "text/plain"
+          context.response.status = HTTP::Status::OK
+          context.response.print answer
+
+          subscriber.emit :challenge, answer
         rescue ex
           raise ChallengeError.new ex.message
         end
       when "POST"
+        # When subscribers receive a content distribution request with the X-Hub-Signature
+        # header specified, they SHOULD recompute the SHA1 signature with the shared secret
+        # using the same method as the hub. If the signature does not match, subscribers MUST
+        # still return a 2xx success response to acknowledge receipt, but locally ignore the
+        # message as invalid.
         begin
-          body = req.body.try &.gets_to_end
-          raise "No content was delivered" if body.nil?
+          if body = context.request.body.try &.gets_to_end
+            raise "No content was delivered" if body.nil?
+            
+            Turquoise::Log.debug { "Notification - #{body}" }
+            subscriber = T.find_subscriber!(Feed.parse_topic(body))
+            subscriber.check_signature(context.request.headers["X-Hub-Signature"], body)
 
-          instance = Subscriber.find_instance(Feed.parse_topic(body))
-          instance.check_signature(req.headers["X-Hub-Signature"], body)
-
-          res.status = HTTP::Status::NO_CONTENT
-          @notification.try &.call(body)
+            context.response.status = HTTP::Status::NO_CONTENT
+            subscriber.emit :notify, body
+          end
         rescue ex
           raise NotificationError.new ex.message
         end
       else
-        raise "Invalid HTTP method `#{req.method}`"
+        raise "Invalid HTTP method `#{context.request.method}`"
       end
+
+      context.response.headers["User-Agent"] = Turquoise::USERAGENT
     end
   end
 end
