@@ -15,7 +15,8 @@ module Turquoise
       after_create :subscribe
       before_destroy :unsubscribe
 
-      # Youtube topic validation
+      # Youtube topic validation.
+      # Must be something like: *https://www.youtube.com/xml/feeds/videos.xml?channel_id=ABC_1234abcdefgh1234ASDF*
       validate :topic, "Identificador de canal inválido" do |subscription|
         !subscription.topic.to_s.delete_at(..55).match(/^[\w-]{24}$/).nil?
       end
@@ -35,7 +36,7 @@ module Turquoise
       def to_subscriber
         subscriber = PubSubHubbub::Subscriber.new(topic!, secret: secret)
 
-        # Updata database when receive the challenge
+        # Updata database when receive a new challenge request
         subscriber.on :challenge do |query|
           params = URI::Params.parse(query)
 
@@ -48,7 +49,7 @@ module Turquoise
           end
         end
 
-        # Notification received, send to listeners
+        # Notification received, send it to listeners if subscription is active
         subscriber.on :notify do |xml|
           next unless active?
 
@@ -67,6 +68,7 @@ module Turquoise
         subscriber
       end
 
+      # `SubscriberHandler` uses to handle incoming requests from Hub
       def self.find_subscriber!(topic : String?) : PubSubHubbub::Subscriber
         find!(topic).to_subscriber
       end
