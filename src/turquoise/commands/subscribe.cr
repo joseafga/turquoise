@@ -3,7 +3,7 @@ module Turquoise
     if message = ctx.message
       user = Tourmaline::User.cast(message.from)
       chat = Tourmaline::Chat.cast(message.chat)
-      topic = "https://www.youtube.com/xml/feeds/videos.xml?channel_id=#{ctx.text.to_s}"
+      topic = "https://www.youtube.com/xml/feeds/videos.xml?channel_id=#{ctx.text}"
 
       Helpers.persist_user(user)
       Helpers.persist_chat(chat)
@@ -40,7 +40,7 @@ module Turquoise
   unsubscribe = Tourmaline::CommandHandler.new("desinscrever") do |ctx|
     if message = ctx.message
       chat = Tourmaline::Chat.cast(message.chat)
-      topic = "https://www.youtube.com/xml/feeds/videos.xml?channel_id=#{ctx.text.to_s}"
+      topic = "https://www.youtube.com/xml/feeds/videos.xml?channel_id=#{ctx.text}"
 
       # TODO: change to job
       if listener = Models::Listener.find_by chat_id: chat.id, subscription_topic: topic
