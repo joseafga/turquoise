@@ -1,18 +1,12 @@
 -- +micrate Up
 -- SQL in section 'Up' is executed when this migration is applied
 CREATE TABLE subscriptions (
-  id BIGSERIAL PRIMARY KEY,
-  topic VARCHAR NOT NULL,
+  topic VARCHAR PRIMARY KEY,
+  secret VARCHAR,
   is_active BOOLEAN NOT NULL,
 
-  user_id BIGSERIAL,
-  chat_id BIGSERIAL,
-
   created_at TIMESTAMP,
-  updated_at TIMESTAMP,
-
-  FOREIGN KEY(user_id) REFERENCES users(id),
-  FOREIGN KEY(chat_id) REFERENCES chats(id)
+  updated_at TIMESTAMP
 );
 
 -- +micrate Down

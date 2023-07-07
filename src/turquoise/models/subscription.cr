@@ -3,54 +3,72 @@ module Turquoise
     class Subscription < Granite::Base
       table subscriptions
 
-      belongs_to :user
-      belongs_to :chat
+      has_many listeners : Listener, foreign_key: :subscription_topic
+      has_many users : User, through: :listeners, foreign_key: :subscription_topic
+      has_many chats : Chat, through: :listeners, foreign_key: :subscription_topic
 
-      column id : Int64, primary: true
-      column topic : String
-      column is_active : Bool = true
-
+      column topic : String, primary: true, auto: false
+      column secret : String? = ENV["HUB_SECRET"]
+      column is_active : Bool = false
       timestamps
+
+      after_create :subscribe
+      before_destroy :unsubscribe
 
       # Youtube topic validation
       validate :topic, "Identificador de canal inválido" do |subscription|
         !subscription.topic.to_s.delete_at(..55).match(/^[\w-]{24}$/).nil?
       end
 
-      # Check if topic notification is already active in any chat
       def active?
-        self.class.exists? topic: topic, is_active: true
+        is_active
       end
 
-      # Check if notificion is already active on chat by any user
-      def exists?
-        self.class.exists? chat_id: chat.id, topic: topic, is_active: true
+      def subscribe
+        PubSubHubbub::Subscriber.new(topic!, secret: secret).subscribe
       end
 
-      def subscriber
-        subscriber = PubSubHubbub::Subscriber.new(topic, secret: ENV["HUB_SECRET"]?)
+      def unsubscribe
+        PubSubHubbub::Subscriber.new(topic!, secret: secret).unsubscribe
+      end
 
-        subscriber.on :challenge do
-          Bot.send_message(chat_id: chat.id.not_nil!, text: "Inscrito com sucesso. 🫡")
+      def to_subscriber
+        subscriber = PubSubHubbub::Subscriber.new(topic!, secret: secret)
+
+        # Updata database when receive the challenge
+        subscriber.on :challenge do |query|
+          params = URI::Params.parse(query)
+
+          case params["hub.mode"]
+          when "subscribe"
+            update is_active: true
+            # TODO: create job to renew
+          when "unsubscribe"
+            update is_active: false
+          end
         end
 
+        # Notification received, send to listeners
         subscriber.on :notify do |xml|
-          next if xml.nil?
+          next unless active?
+
           entry = PubSubHubbub::Feed.parse(xml).entries.first
           message = <<-MSG
-          #video #yt #iute
+          #video #youtube #iute
           #{entry.title}
           #{entry.link}
           MSG
 
-          Bot.send_message(chat_id: chat.id.not_nil!, text: Helpers.escape_md message)
+          chats.each do |chat|
+            Bot.send_message(chat_id: chat.id!, text: Helpers.escape_md message)
+          end
         end
 
         subscriber
       end
 
-      def self.find_subscriber!(topic : String?)
-        find_by!(topic: topic, is_active: true).subscriber
+      def self.find_subscriber!(topic : String?) : PubSubHubbub::Subscriber
+        find!(topic).to_subscriber
       end
     end
   end

@@ -9,21 +9,18 @@ module Turquoise
       Helpers.persist_chat(chat)
 
       # TODO: change to job
-      subscription = Models::Subscription.new user_id: user.id, chat_id: chat.id, topic: topic, is_active: true
-
-      if subscription.exists?
-        raise "O chat já está recebendo notificações deste tópico. \
-              Em caso de erro, tente se /desinscrever e /inscrever novamente."
-      else
-        if subscription.active?
-          subscription.save!
-          ctx.reply("Inscrito com sucesso. 🫡")
-        else
-          subscription.save!
-          subscription.subscriber.subscribe
-          ctx.reply("Pedido de inscrição com sucesso, aguarde a confirmação do servidor.")
-        end
+      if Models::Listener.exists? chat_id: chat.id, subscription_topic: topic
+        raise "O grupo já está inscrito neste canal."
       end
+
+      if subscription = Models::Subscription.find(topic)
+        subscription.subscribe unless subscription.active?
+      else
+        Models::Subscription.create! topic: topic
+      end
+
+      Models::Listener.create! user_id: user.id, chat_id: chat.id, subscription_topic: topic
+      ctx.reply("Inscrito com sucesso. 🫡")
     end
   rescue ex : Granite::RecordNotSaved
     message = String.build do |msg|
@@ -36,7 +33,7 @@ module Turquoise
 
     ctx.reply(Helpers.escape_md message)
   rescue ex
-    message = "`#{ex.class}`: #{ex.message || ex.cause.try &.message}"
+    message = "Erro ao inscrever-se: #{ex.message || ex.cause.try &.message}"
     ctx.reply(Helpers.escape_md message)
   end
 
