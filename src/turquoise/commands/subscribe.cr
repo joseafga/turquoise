@@ -37,5 +37,24 @@ module Turquoise
     ctx.reply(Helpers.escape_md message)
   end
 
-  Bot.register subscribe
+  unsubscribe = Tourmaline::CommandHandler.new("desinscrever") do |ctx|
+    if message = ctx.message
+      chat = Tourmaline::Chat.cast(message.chat)
+      topic = "https://www.youtube.com/xml/feeds/videos.xml?channel_id=#{ctx.text.to_s}"
+
+      # TODO: change to job
+      if listener = Models::Listener.find_by chat_id: chat.id, subscription_topic: topic
+        listener.destroy!
+      else
+        raise "Não existe inscrição ativa para este canal."
+      end
+
+      ctx.reply("Desinscrito com sucesso... 🥹")
+    end
+  rescue ex
+    message = "Erro ao desinscrever-se: #{ex.message || ex.cause.try &.message}"
+    ctx.reply(Helpers.escape_md message)
+  end
+
+  Bot.register subscribe, unsubscribe
 end
