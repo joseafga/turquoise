@@ -1,6 +1,7 @@
 require "mosquito"
 require "tourmaline"
 require "dotenv"
+require "redis"
 require "pg"
 
 Dotenv.load? ".env"
@@ -14,10 +15,11 @@ require "./models/*"
 
 # TODO: Write documentation for `Turquoise`
 module Turquoise
-  VERSION     = "0.1.0"
-  USERAGENT   = "Turquoise/#{VERSION}"
-  Log         = ::Log.for("turquoise")
-  Bot         = Tourmaline::Client.new(ENV["BOT_TOKEN"])
+  VERSION   = "0.1.0"
+  USERAGENT = "Turquoise/#{VERSION}"
+  Log       = ::Log.for("turquoise")
+  Redis     = ::Redis::Client.new(URI.parse(ENV["REDIS_URL"]))
+  Bot       = Tourmaline::Client.new(ENV["BOT_TOKEN"])
 
   Bot.set_webhook File.join(ENV["HOST_URL"], ENV["BOT_WEBHOOK_PATH"])
 

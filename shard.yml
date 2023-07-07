@@ -11,16 +11,18 @@ targets:
     main: src/worker.cr
 
 dependencies:
+  dotenv:
+    github: gdotdesign/cr-dotenv
   tourmaline:
     github: protoncr/tourmaline
     branch: master
-  dotenv:
-    github: gdotdesign/cr-dotenv
   pg:
     github: will/crystal-pg
   granite:
     github: amberframework/granite
     branch: master
+  redis:
+    github: jgaskins/redis
   mosquito:
     github: mosquito-cr/mosquito
     branch: master

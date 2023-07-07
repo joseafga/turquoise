@@ -51,9 +51,16 @@ module Turquoise
 
         # Notification received, send it to listeners if subscription is active
         subscriber.on :notify do |xml|
-          next unless active?
+          raise "Inactive subscription (#{subscriber.topic})." unless active?
 
           entry = PubSubHubbub::Feed.parse(xml).entries.first
+
+          # When uploading or updating a video, the notification is equal, a workaround to
+          # identify it was store the video id in redis and compare it with the notification.
+          found = Redis.sismember("turquoise:subscription:history", entry.id.not_nil!).as(Int64)
+          next unless found.zero?
+          Redis.sadd "turquoise:subscription:history", entry.id.not_nil!
+
           message = <<-MSG
           #video #youtube #iute
           #{entry.title}
@@ -63,6 +70,8 @@ module Turquoise
           chats.each do |chat|
             Bot.send_message(chat_id: chat.id!, text: Helpers.escape_md message)
           end
+        rescue ex
+          Log.error { "Notification - #{ex.message}." }
         end
 
         subscriber
