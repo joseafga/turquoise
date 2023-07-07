@@ -7,34 +7,8 @@ module Turquoise
 
       Helpers.persist_user(user)
       Helpers.persist_chat(chat)
-
-      # TODO: change to job
-      if Models::Listener.exists? chat_id: chat.id, subscription_topic: topic
-        raise "O grupo já está inscrito neste canal."
-      end
-
-      if subscription = Models::Subscription.find(topic)
-        subscription.subscribe unless subscription.active?
-      else
-        Models::Subscription.create! topic: topic
-      end
-
-      Models::Listener.create! user_id: user.id, chat_id: chat.id, subscription_topic: topic
-      ctx.reply("Inscrito com sucesso. 🫡")
+      Jobs::Subscribe.new(message_id: message.message_id.to_i64, user_id: user.id.to_i64, chat_id: chat.id.to_i64, topic: topic).enqueue
     end
-  rescue ex : Granite::RecordNotSaved
-    message = String.build do |msg|
-      msg << "Ocorreram os seguintes erros:"
-
-      ex.model.errors.each do |error|
-        msg << "\n- #{error.message}"
-      end
-    end
-
-    ctx.reply(Helpers.escape_md message)
-  rescue ex
-    message = "Erro ao inscrever-se: #{ex.message || ex.cause.try &.message}"
-    ctx.reply(Helpers.escape_md message)
   end
 
   unsubscribe = Tourmaline::CommandHandler.new("desinscrever") do |ctx|
@@ -42,18 +16,8 @@ module Turquoise
       chat = Tourmaline::Chat.cast(message.chat)
       topic = "https://www.youtube.com/xml/feeds/videos.xml?channel_id=#{ctx.text}"
 
-      # TODO: change to job
-      if listener = Models::Listener.find_by chat_id: chat.id, subscription_topic: topic
-        listener.destroy!
-      else
-        raise "Não existe inscrição ativa para este canal."
-      end
-
-      ctx.reply("Desinscrito com sucesso... 🥹")
+      Jobs::Unsubscribe.new(message_id: message.message_id.to_i64, chat_id: chat.id.to_i64, topic: topic).enqueue
     end
-  rescue ex
-    message = "Erro ao desinscrever-se: #{ex.message || ex.cause.try &.message}"
-    ctx.reply(Helpers.escape_md message)
   end
 
   Bot.register subscribe, unsubscribe
