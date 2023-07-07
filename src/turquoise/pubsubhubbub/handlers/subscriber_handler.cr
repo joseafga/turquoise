@@ -28,15 +28,14 @@ module PubSubHubbub
         # unsubscription that it wishes to carry out. If so, the subscriber MUST respond with an
         # HTTP success (2xx) code with a response body equal to the hub.challenge parameter.
         begin
-          Turquoise::Log.debug { "Challenge - #{context.request.query_params}" }
+          Turquoise::Log.debug { "Challenge - #{context.request.query_params["hub.mode"]} on #{context.request.query_params["hub.topic"]}" }
           subscriber = T.find_subscriber!(context.request.query_params["hub.topic"])
           answer = subscriber.challenge_verification(context.request.query_params)
 
           context.response.content_type = "text/plain"
           context.response.status = HTTP::Status::OK
           context.response.print answer
-
-          subscriber.emit :challenge, answer
+          subscriber.emit :challenge, context.request.query_params.to_s
         rescue ex
           raise ChallengeError.new ex.message
         end

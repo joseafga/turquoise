@@ -27,15 +27,15 @@ module PubSubHubbub
 
     property topic : String
     property secret : String?
-    @hooks = {} of Event => Array(Proc(String?, Nil))
+    @hooks = {} of Event => Array(Proc(String, Nil))
 
     def initialize(@topic, @secret = nil)
     end
 
     # Attach a block (function) to a specific 'Event', when the event occurs, the function
     # will be called.
-    def on(event : Event, &block : String? ->)
-      @hooks[event] ||= [] of Proc(String?, Nil)
+    def on(event : Event, &block : String ->)
+      @hooks[event] ||= [] of Proc(String, Nil)
       @hooks[event] << block
     end
 
@@ -44,7 +44,7 @@ module PubSubHubbub
       return unless @hooks.has_key?(event)
 
       @hooks[event].each do |block|
-        block.call(data)
+        block.call(data.to_s)
       end
     end
 
