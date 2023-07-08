@@ -43,7 +43,8 @@ module Turquoise
           case params["hub.mode"]
           when "subscribe"
             update is_active: true
-            # TODO: create job to renew
+            # Subscription duration is 5 days (120 hours)
+            Jobs::RenewSubscription.new(topic: subscriber.topic).enqueue(in: 110.hours)
           when "unsubscribe"
             update is_active: false
           end
