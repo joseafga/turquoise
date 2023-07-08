@@ -1,6 +1,6 @@
 module PubSubHubbub
   class Subscriber
-    @subscription : Turquoise::Models::Subscription?
+    property subscription : Turquoise::Models::Subscription?
 
     def to_subscription
       @subscription ||= Turquoise::Models::Subscription.find!(topic)

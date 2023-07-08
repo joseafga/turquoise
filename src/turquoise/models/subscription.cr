@@ -34,7 +34,9 @@ module Turquoise
       end
 
       def to_subscriber
-        PubSubHubbub::Subscriber.new(topic!, secret: @secret)
+        subscriber = PubSubHubbub::Subscriber.new(topic!, secret: @secret)
+        subscriber.subscription = self # store for reuse
+        subscriber
       end
     end
   end
