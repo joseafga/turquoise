@@ -1,15 +1,15 @@
-require "mosquito"
-require "tourmaline"
 require "dotenv"
-require "redis"
+require "tourmaline"
+require "pubsubhubbub"
 require "pg"
+require "redis"
+require "mosquito"
 
 Dotenv.load? ".env"
 Granite::Connections << Granite::Adapter::Pg.new(name: "pg", url: ENV["DATABASE_URL"])
 
 require "granite"
 require "granite/adapter/pg"
-require "./pubsubhubbub"
 require "./ext/pubsubhubbub/subscriber"
 require "./helpers"
 require "./hooks"

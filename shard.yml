@@ -16,6 +16,8 @@ dependencies:
   tourmaline:
     github: protoncr/tourmaline
     branch: master
+  pubsubhubbub:
+    github: joseafga/pubsubhubbub.cr
   pg:
     github: will/crystal-pg
   granite:
