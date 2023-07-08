@@ -7,9 +7,9 @@ module Turquoise
       # Send a random static (jpg or png) or animated (gif) picture.
       def perform
         if ::File.extname(url = fetch_url) == ".gif"
-          Bot.send_animation(animation: url, chat_id: chat_id)
+          Bot.send_animation animation: url, chat_id: chat_id
         else # .jpg, .png
-          Bot.send_photo(photo: url, chat_id: chat_id)
+          Bot.send_photo photo: url, chat_id: chat_id
         end
       end
 

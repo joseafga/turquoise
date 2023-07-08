@@ -26,61 +26,15 @@ module Turquoise
       end
 
       def subscribe
-        PubSubHubbub::Subscriber.new(topic!, secret: secret).subscribe
+        to_subscriber.subscribe
       end
 
       def unsubscribe
-        PubSubHubbub::Subscriber.new(topic!, secret: secret).unsubscribe
+        to_subscriber.unsubscribe
       end
 
       def to_subscriber
-        subscriber = PubSubHubbub::Subscriber.new(topic!, secret: secret)
-
-        # Updata database when receive a new challenge request
-        subscriber.on :challenge do |query|
-          params = URI::Params.parse(query)
-
-          case params["hub.mode"]
-          when "subscribe"
-            update is_active: true
-            # Subscription duration is 5 days (120 hours)
-            Jobs::RenewSubscription.new(topic: subscriber.topic).enqueue(in: 110.hours)
-          when "unsubscribe"
-            update is_active: false
-          end
-        end
-
-        # Notification received, send it to listeners if subscription is active
-        subscriber.on :notify do |xml|
-          raise "Inactive subscription (#{subscriber.topic})." unless active?
-
-          entry = PubSubHubbub::Feed.parse(xml).entries.first
-
-          # When uploading or updating a video, the notification is equal, a workaround to
-          # identify it was store the video id in redis and compare it with the notification.
-          found = Redis.sismember("turquoise:subscription:history", entry.id.not_nil!).as(Int64)
-          next unless found.zero?
-          Redis.sadd "turquoise:subscription:history", entry.id.not_nil!
-
-          message = <<-MSG
-          #video #youtube #iute
-          #{entry.title}
-          #{entry.link}
-          MSG
-
-          chats.each do |chat|
-            Bot.send_message(chat_id: chat.id!, text: Helpers.escape_md message)
-          end
-        rescue ex
-          Log.error { "Notification - #{ex.message}." }
-        end
-
-        subscriber
-      end
-
-      # `SubscriberHandler` uses to handle incoming requests from Hub
-      def self.find_subscriber!(topic : String?) : PubSubHubbub::Subscriber
-        find!(topic).to_subscriber
+        PubSubHubbub::Subscriber.new(topic!, secret: @secret)
       end
     end
   end

@@ -27,25 +27,9 @@ module PubSubHubbub
 
     property topic : String
     property secret : String?
-    @hooks = {} of Event => Array(Proc(String, Nil))
+    class_getter hooks = {} of Event => Array(Proc(Subscriber, String, Nil))
 
     def initialize(@topic, @secret = nil)
-    end
-
-    # Attach a block (function) to a specific 'Event', when the event occurs, the function
-    # will be called.
-    def on(event : Event, &block : String ->)
-      @hooks[event] ||= [] of Proc(String, Nil)
-      @hooks[event] << block
-    end
-
-    # Send signal to call functions attached to corresponding `Event`
-    def emit(event : Event, data : String? = nil)
-      return unless @hooks.has_key?(event)
-
-      @hooks[event].each do |block|
-        block.call(data.to_s)
-      end
     end
 
     # Make a request to unsubscribe/subscribe on the YouTube PubSubHubbub publisher.
@@ -95,6 +79,26 @@ module PubSubHubbub
       raise ChallengeError.new "Invalid challenge" unless params["hub.challenge"]?
 
       params["hub.challenge"]
+    end
+
+    def emit(event : Event, data : String? = nil)
+      self.class.emit(self, event, data)
+    end
+
+    # Send signal to call functions attached to corresponding `Event`
+    def self.emit(subscriber : Subscriber, event : Event, data : String? = nil)
+      return unless @@hooks.has_key?(event)
+
+      @@hooks[event].each do |block|
+        block.call(subscriber, data.to_s)
+      end
+    end
+
+    # Attach a block (function) to a specific 'Event', when the event occurs, the function
+    # will be called.
+    def self.on(event : Event, &block : Subscriber, String ->)
+      @@hooks[event] ||= [] of Proc(Subscriber, String, Nil)
+      @@hooks[event] << block
     end
   end
 end

@@ -10,7 +10,7 @@ module Turquoise
     PubSubHubbub::ErrorHandler.new,
     HTTP::LogHandler.new,
     HTTP::CompressHandler.new,
-    PubSubHubbub::SubscriberHandler(Models::Subscription).new,
+    PubSubHubbub::SubscriberHandler(PubSubHubbub::Subscriber).new,
   ]) do |context|
     Helpers.handle_webhook(context)
   end

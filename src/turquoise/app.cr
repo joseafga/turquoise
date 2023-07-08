@@ -10,7 +10,9 @@ Granite::Connections << Granite::Adapter::Pg.new(name: "pg", url: ENV["DATABASE_
 require "granite"
 require "granite/adapter/pg"
 require "./pubsubhubbub"
+require "./ext/pubsubhubbub/subscriber"
 require "./helpers"
+require "./hooks"
 require "./models/*"
 
 # TODO: Write documentation for `Turquoise`

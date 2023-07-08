@@ -35,7 +35,7 @@ module Turquoise
       end
 
       def reply(text)
-        Bot.send_message(chat_id: chat_id, text: text, reply_to_message_id: message_id)
+        Bot.send_message chat_id: chat_id, text: text, reply_to_message_id: message_id
       end
     end
   end
