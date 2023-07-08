@@ -17,7 +17,7 @@ require "./models/*"
 
 # TODO: Write documentation for `Turquoise`
 module Turquoise
-  VERSION   = "0.1.0"
+  VERSION   = "0.2.0"
   USERAGENT = "Turquoise/#{VERSION}"
   Log       = ::Log.for("turquoise")
   Redis     = ::Redis::Client.new(URI.parse(ENV["REDIS_URL"]))
