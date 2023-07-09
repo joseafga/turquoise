@@ -1,3 +1,4 @@
+require "log"
 require "dotenv"
 require "tourmaline"
 require "pubsubhubbub"
@@ -5,6 +6,7 @@ require "pg"
 require "redis"
 require "mosquito"
 
+Log.setup_from_env
 Dotenv.load? ".env"
 Granite::Connections << Granite::Adapter::Pg.new(name: "pg", url: ENV["DATABASE_URL"])
 
@@ -28,6 +30,7 @@ module Turquoise
   PubSubHubbub.configure do |settings|
     settings.host = ENV["HOST_URL"]
     settings.path = ENV["HUB_WEBHOOK_PATH"]
+    settings.useragent = USERAGENT
   end
 
   Mosquito.configure do |settings|
