@@ -1,6 +1,6 @@
 require "./turquoise/app"
 require "./turquoise/commands/**"
-require "http"
+require "http/server"
 
 module Turquoise
   # TODO: Startup message to owner

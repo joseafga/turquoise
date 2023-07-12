@@ -15,13 +15,14 @@ require "granite/adapter/pg"
 require "./ext/pubsubhubbub/subscriber"
 require "./helpers"
 require "./hooks"
+require "./eloquent"
 require "./models/*"
 
 # TODO: Write documentation for `Turquoise`
 module Turquoise
   VERSION   = "0.2.0"
   USERAGENT = "Turquoise/#{VERSION}"
-  Log       = ::Log.for("turquoise")
+  Log       = ::Log.for("turquoise.app")
   Redis     = ::Redis::Client.new(URI.parse(ENV["REDIS_URL"]))
   Bot       = Tourmaline::Client.new(ENV["BOT_TOKEN"])
 
