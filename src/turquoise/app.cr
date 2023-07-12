@@ -8,6 +8,15 @@ require "mosquito"
 
 Dotenv.load? ".env"
 Granite::Connections << Granite::Adapter::Pg.new(name: "pg", url: ENV["DATABASE_URL"])
+Log.setup do |c|
+  backend = ::Log::IOBackend.new
+
+  c.bind "*", :warn, backend
+  c.bind "tourmaline.*", :info, backend
+  c.bind "mosquito.*", :info, backend
+  c.bind "pubsubhubbub", :debug, backend
+  c.bind "turquoise.*", :debug, backend
+end
 
 require "granite"
 require "granite/adapter/pg"
@@ -24,16 +33,6 @@ module Turquoise
   Log       = ::Log.for("turquoise.app")
   Redis     = ::Redis::Client.new(URI.parse(ENV["REDIS_URL"]))
   Bot       = Tourmaline::Client.new(ENV["BOT_TOKEN"])
-
-  ::Log.setup_from_env
-  ::Log.setup do |c|
-    backend = ::Log::IOBackend.new
-
-    c.bind "*", :warn, backend
-    c.bind "tourmaline.*", :info, backend
-    c.bind "mosquito.*", :info, backend
-    c.bind "turquoise.*", :debug, backend
-  end
 
   PubSubHubbub.configure do |settings|
     settings.host = ENV["HOST_URL"]
