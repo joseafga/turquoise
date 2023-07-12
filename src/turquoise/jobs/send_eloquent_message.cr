@@ -16,7 +16,7 @@ module Turquoise
       end
 
       def reschedule_interval(retry_count)
-        20.seconds * (retry_count ** 2)
+        20.seconds * retry_count
       end
     end
   end

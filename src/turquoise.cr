@@ -3,8 +3,11 @@ require "./turquoise/commands/**"
 require "http/server"
 
 module Turquoise
-  # Startup message to owner
-  spawn { Bot.send_message(ENV["BOT_OWNER"], text: "Prontinha!") }
+  # Set telegram webhook and send startup message to owner
+  spawn do
+    Bot.set_webhook File.join(ENV["HOST_URL"], ENV["BOT_WEBHOOK_PATH"])
+    Bot.send_message(ENV["BOT_OWNER"], text: "Prontinha!")
+  end
 
   server = HTTP::Server.new([
     PubSubHubbub::ErrorHandler.new,

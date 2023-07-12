@@ -19,7 +19,7 @@ require "./models/*"
 
 # TODO: Write documentation for `Turquoise`
 module Turquoise
-  VERSION   = "0.2.0"
+  VERSION   = "0.2.2"
   USERAGENT = "Turquoise/#{VERSION}"
   Log       = ::Log.for("turquoise.app")
   Redis     = ::Redis::Client.new(URI.parse(ENV["REDIS_URL"]))
@@ -44,8 +44,6 @@ module Turquoise
   Mosquito.configure do |settings|
     settings.redis_url = ENV["REDIS_URL"]
   end
-
-  Bot.set_webhook File.join(ENV["HOST_URL"], ENV["BOT_WEBHOOK_PATH"])
 end
 
 require "./jobs/**"
