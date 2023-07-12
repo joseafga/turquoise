@@ -1,7 +1,21 @@
 module Turquoise
   module Helpers
-    extend Tourmaline::Helpers
     extend self
+
+    def escape_md(text, version = 1)
+      case version
+      when 0, 1
+        escapes = ['_', '*', '`']
+      when 2
+        escapes = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+      else
+        raise "Invalid version #{version} for `escape_md`"
+      end
+
+      text.to_s.gsub do |char|
+        escapes.includes?(char) ? "\\#{char}" : char
+      end
+    end
 
     # Basically Tourmaline::Server without a new HTTP::Server
     def handle_webhook(context)
