@@ -3,8 +3,8 @@ require "./turquoise/commands/**"
 require "http/server"
 
 module Turquoise
-  # TODO: Startup message to owner
-  # bot.send_message(ENV["BOT_OWNER"], text: "Prontinha!")
+  # Startup message to owner
+  spawn { Bot.send_message(ENV["BOT_OWNER"], text: "Prontinha!") }
 
   server = HTTP::Server.new([
     PubSubHubbub::ErrorHandler.new,

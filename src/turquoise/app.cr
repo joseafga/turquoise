@@ -6,7 +6,6 @@ require "pg"
 require "redis"
 require "mosquito"
 
-Log.setup_from_env
 Dotenv.load? ".env"
 Granite::Connections << Granite::Adapter::Pg.new(name: "pg", url: ENV["DATABASE_URL"])
 
@@ -26,7 +25,15 @@ module Turquoise
   Redis     = ::Redis::Client.new(URI.parse(ENV["REDIS_URL"]))
   Bot       = Tourmaline::Client.new(ENV["BOT_TOKEN"])
 
-  Bot.set_webhook File.join(ENV["HOST_URL"], ENV["BOT_WEBHOOK_PATH"])
+  ::Log.setup_from_env
+  ::Log.setup do |c|
+    backend = ::Log::IOBackend.new
+
+    c.bind "*", :warn, backend
+    c.bind "tourmaline.*", :info, backend
+    c.bind "mosquito.*", :info, backend
+    c.bind "turquoise.*", :debug, backend
+  end
 
   PubSubHubbub.configure do |settings|
     settings.host = ENV["HOST_URL"]
@@ -37,6 +44,8 @@ module Turquoise
   Mosquito.configure do |settings|
     settings.redis_url = ENV["REDIS_URL"]
   end
+
+  Bot.set_webhook File.join(ENV["HOST_URL"], ENV["BOT_WEBHOOK_PATH"])
 end
 
 require "./jobs/**"
