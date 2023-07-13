@@ -35,8 +35,7 @@ module Turquoise
   Bot       = Tourmaline::Client.new(ENV["BOT_TOKEN"])
 
   PubSubHubbub.configure do |settings|
-    settings.host = ENV["HOST_URL"]
-    settings.path = ENV["HUB_WEBHOOK_PATH"]
+    settings.callback = File.join(ENV["HOST_URL"], ENV["HUB_WEBHOOK_PATH"])
     settings.useragent = USERAGENT
   end
 

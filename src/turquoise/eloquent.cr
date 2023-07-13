@@ -19,10 +19,6 @@ module Turquoise
     MESSAGES_MAX = ENV["ELOQUENT_MESSAGE_MAX"].to_i
     BUFFER_MAX   = ENV["ELOQUENT_BUFFER_MAX"].to_i
     @@buffer = {} of Int64 => Eloquent
-    @@headers = HTTP::Headers{
-      "Authorization" => "Bearer #{ENV["OPENAI_API_KEY"]}",
-      "Content-Type"  => "application/json",
-    }
 
     property chat_id : Int64
     property data = RequestData.new
@@ -31,11 +27,13 @@ module Turquoise
     end
 
     def message(text : String)
+      headers = HTTP::Headers{"Authorization" => "Bearer #{ENV["OPENAI_API_KEY"]}", "Content-Type" => "application/json"}
       push_message({role: "user", content: text})
-      response = HTTP::Client.post(ENDPOINT, body: data.to_json, headers: @@headers)
-      response_data = JSON.parse(response.body)
 
-      if response.status.success?
+      response = HTTP::Client.post(ENDPOINT, body: data.to_json, headers: headers)
+
+      if response.success?
+        response_data = JSON.parse(response.body)
         reply = response_data["choices"][0]["message"]["content"].to_s
         push_message({role: "assistant", content: reply})
 
