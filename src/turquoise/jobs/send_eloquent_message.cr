@@ -1,22 +1,36 @@
 module Turquoise
   module Jobs
     class SendEloquentMessage < Mosquito::QueuedJob
-      param message_id : Int64
       param chat_id : Int64
       param text : String
+      param message_id : Int64
 
       def perform
-        reply = Eloquent.instance(chat_id).message(text)
+        eloquent = Eloquent.instance(chat_id)
+        response = eloquent.message(text)
+        options = {chat_id: chat_id, reply_to_message_id: message_id}
+        options = options.merge({reply_to_message_id: nil}) if message_id.zero? || eloquent.chat.type == "private"
 
-        if message_id.zero?
-          Bot.send_message chat_id: chat_id, text: Helpers.escape_md(reply)
-        else
-          Bot.send_message chat_id: chat_id, text: Helpers.escape_md(reply), reply_to_message_id: message_id
+        if response.includes? ENV["ELOQUENT_PICTURE_KEYWORD"]
+          if photo = picture_file
+            Bot.send_photo **options.merge({photo: photo, caption: Helpers.escape_md(response)})
+          end
+          return
         end
+
+        Bot.send_message **options.merge({text: Helpers.escape_md(response)})
       end
 
       def reschedule_interval(retry_count)
         20.seconds * retry_count
+      end
+
+      def picture_file
+        dir = ::File.expand_path("../../../img/pictures/", __DIR__)
+        picture = ::Dir.glob(::File.join(dir, "/turquesa_*.png")).sample
+
+        return ::File.open(picture, "rb") if ::File.exists? picture
+        nil
       end
     end
   end

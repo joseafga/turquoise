@@ -11,7 +11,6 @@ module Turquoise
       property temperature = 1.2
 
       def initialize
-        @messages << {role: "system", content: ENV["ELOQUENT_ROLE"]}
       end
     end
 
@@ -20,24 +19,34 @@ module Turquoise
     BUFFER_MAX   = ENV["ELOQUENT_BUFFER_MAX"].to_i
     @@buffer = {} of Int64 => Eloquent
 
-    property chat_id : Int64
+    property chat : Models::Chat
     property data = RequestData.new
 
-    def initialize(@chat_id)
+    def initialize(chat_id)
+      @chat = Models::Chat.find! chat_id
+      @data.messages << {role: "system", content: role_per_type}
+    end
+
+    def role_per_type
+      if chat.type == "private"
+        ENV["ELOQUENT_PRIVATE_ROLE"]
+      else
+        ENV["ELOQUENT_GROUP_ROLE"]
+      end
     end
 
     def message(text : String)
       headers = HTTP::Headers{"Authorization" => "Bearer #{ENV["OPENAI_API_KEY"]}", "Content-Type" => "application/json"}
-      push_message({role: "user", content: text})
+      push_message role: "user", content: text
 
       response = HTTP::Client.post(ENDPOINT, body: data.to_json, headers: headers)
 
       if response.success?
         response_data = JSON.parse(response.body)
         reply = response_data["choices"][0]["message"]["content"].to_s
-        push_message({role: "assistant", content: reply})
+        push_message role: "assistant", content: reply
 
-        Log.debug { "eloquent -- #{chat_id}: #{data.messages}" }
+        Log.debug { "eloquent -- #{chat.id}: #{data.messages}" }
         reply
       else
         raise "eloquent -- #{response.status_code} #{response.status}"
@@ -45,9 +54,9 @@ module Turquoise
     end
 
     # Keep maximum size and system message
-    private def push_message(value)
+    private def push_message(**kwargs)
       data.messages.delete_at(1) if data.messages.size >= MESSAGES_MAX
-      data.messages << value
+      data.messages << kwargs
     end
 
     # TODO: Save old chats in redis and retrieve it when needed
