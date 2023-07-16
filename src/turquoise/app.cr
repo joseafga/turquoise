@@ -20,7 +20,7 @@ end
 
 require "granite"
 require "granite/adapter/pg"
-require "./ext/pubsubhubbub/subscriber"
+require "../ext/pubsubhubbub/subscriber"
 require "./helpers"
 require "./hooks"
 require "./eloquent"
