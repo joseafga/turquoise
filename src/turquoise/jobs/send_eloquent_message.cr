@@ -27,7 +27,7 @@ module Turquoise
 
       def picture_file
         dir = ::File.expand_path("../../../img/pictures/", __DIR__)
-        picture = ::Dir.glob(::File.join(dir, "/turquesa_*.png")).sample
+        picture = ::Dir.glob(::File.join(dir, "/turquesa_*.jpg")).sample
 
         return ::File.open(picture, "rb") if ::File.exists? picture
         nil

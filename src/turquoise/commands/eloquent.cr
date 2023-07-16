@@ -49,17 +49,16 @@ module Turquoise
 
     chat = Tourmaline::CommandHandler.new("chat") do |ctx|
       if message = ctx.message
-        if text = message.text
-          next if text.empty?
+        text = ctx.text.to_s
+        next if text.empty?
 
-          Helpers.persist_chat(message.chat)
-          ctx.send_chat_action(:typing)
-          Jobs::SendEloquentMessage.new(
-            chat_id: message.chat.id.to_i64,
-            text: text,
-            message_id: message.message_id.to_i64
-          ).enqueue
-        end
+        Helpers.persist_chat(message.chat)
+        ctx.send_chat_action(:typing)
+        Jobs::SendEloquentMessage.new(
+          chat_id: message.chat.id.to_i64,
+          text: text,
+          message_id: message.message_id.to_i64
+        ).enqueue
       end
     end
 
