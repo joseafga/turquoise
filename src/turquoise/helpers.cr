@@ -17,6 +17,18 @@ module Turquoise
       end
     end
 
+    # Configure webook only if is needed
+    def config_webhook
+      url = File.join(ENV["HOST_URL"], ENV["BOT_WEBHOOK_PATH"])
+
+      unless Redis.get("turquoise:telegram:webhook") == url
+        Log.info { "Configuring Webhook ..." }
+        Bot.delete_webhook
+        Bot.set_webhook url
+        Redis.set "turquoise:telegram:webhook", url
+      end
+    end
+
     # Basically Tourmaline::Server without a new HTTP::Server
     def handle_webhook(context)
       Fiber.current.telegram_bot_server_http_context = context
@@ -24,7 +36,9 @@ module Turquoise
       return unless context.request.method == "POST"
       return unless context.request.path == ENV["BOT_WEBHOOK_PATH"]
 
-      if body = context.request.body
+      if body = context.request.body.try &.gets_to_end
+        Log.debug { "receiving ◄◄ #{JSON.parse(body).to_pretty_json}" }
+
         update = Tourmaline::Update.from_json(body)
         Bot.dispatcher.process(update)
       end

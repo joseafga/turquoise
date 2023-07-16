@@ -3,9 +3,9 @@ require "./turquoise/commands/**"
 require "http/server"
 
 module Turquoise
-  # Set telegram webhook and send startup message to owner
+  # Configure telegram webhook and send a startup message to owner
   spawn do
-    Bot.set_webhook File.join(ENV["HOST_URL"], ENV["BOT_WEBHOOK_PATH"])
+    Helpers.config_webhook
     Bot.send_message(ENV["BOT_OWNER"], text: "Prontinha!")
   end
 
