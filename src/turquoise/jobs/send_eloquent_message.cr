@@ -11,7 +11,7 @@ module Turquoise
         options = {chat_id: chat_id, reply_to_message_id: message_id}
         options = options.merge({reply_to_message_id: nil}) if message_id.zero? || eloquent.chat.type == "private"
 
-        if response.includes? ENV["ELOQUENT_PICTURE_KEYWORD"]
+        if response.matches? Regex.new(ENV["ELOQUENT_PICTURE_KEYWORD"])
           if photo = picture_file
             Bot.send_photo **options.merge({photo: photo, caption: Helpers.escape_md(response)})
           end
