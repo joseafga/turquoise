@@ -1,20 +1,8 @@
-require "json"
-require "http/client"
+require "./eloquent/api"
 
 module Turquoise
   class Eloquent
-    struct RequestData
-      include JSON::Serializable
-
-      property model = "gpt-3.5-turbo"
-      property messages = [] of NamedTuple(role: String, content: String)
-      property temperature = 1.2
-
-      def initialize
-      end
-    end
-
-    ENDPOINT     = "https://api.openai.com/v1/chat/completions"
+    ENDPOINT     = "#{ENV["ELOQUENT_HOST_URL"]}/v1/chat/completions"
     MESSAGES_MAX = ENV["ELOQUENT_MESSAGE_MAX"].to_i
     BUFFER_MAX   = ENV["ELOQUENT_BUFFER_MAX"].to_i
     @@buffer = {} of Int64 => Eloquent
@@ -24,39 +12,59 @@ module Turquoise
 
     def initialize(chat_id)
       @chat = Models::Chat.find! chat_id
-      @data.messages << {role: "system", content: role_per_type}
+      @data << system_role
     end
 
-    def role_per_type
-      if chat.type == "private"
-        ENV["ELOQUENT_PRIVATE_ROLE"]
-      else
-        ENV["ELOQUENT_GROUP_ROLE"]
-      end
-    end
-
-    def message(text : String)
-      headers = HTTP::Headers{"Authorization" => "Bearer #{ENV["OPENAI_API_KEY"]}", "Content-Type" => "application/json"}
-      push_message role: "user", content: text
-
+    def request
+      headers = HTTP::Headers{"Authorization" => "Bearer #{ENV["ELOQUENT_API_KEY"]}", "Content-Type" => "application/json"}
       response = HTTP::Client.post(ENDPOINT, body: data.to_json, headers: headers)
 
       if response.success?
-        response_data = JSON.parse(response.body)
-        reply = response_data["choices"][0]["message"]["content"].to_s
-        push_message role: "assistant", content: reply
-
-        Log.debug { "eloquent -- #{chat.id}: #{data.messages}" }
-        reply
+        Chat::Completion.from_json(response.body)
       else
-        raise "eloquent -- #{response.status_code} #{response.status}"
+        raise "eloquent -- #{response.status_code} #{response.status}: #{response.body}"
       end
     end
 
-    # Keep maximum size and system message
-    private def push_message(**kwargs)
-      data.messages.delete_at(1) if data.messages.size >= MESSAGES_MAX
-      data.messages << kwargs
+    def completion(text : String) : Chat::Completion::Message
+      data << Chat::Completion::Message.new :user, text
+      message = request.choices.first[:message]
+      data << message
+
+      # Process Function calling
+      # https://platform.openai.com/docs/guides/gpt/function-calling
+      if function = message.function_call
+        case function[:name]?
+        when "send_selfie"
+          send_selfie
+        end
+      end
+
+      Log.debug { "eloquent -- #{chat.id}: #{data.messages}" }
+      data.messages.last
+    end
+
+    def system_role
+      if chat.type == "private"
+        Chat::Completion::Message.new :system, ENV["ELOQUENT_ROLE_PRIVATE"]
+      else
+        Chat::Completion::Message.new :system, ENV["ELOQUENT_ROLE_GROUP"]
+      end
+    end
+
+    def send_selfie
+      data << Chat::Completion::Message.new :function, %({"description": "Cute portrait"}), name: "send_selfie"
+      message = request.choices.first[:message]
+      message.photo = random_selfie
+      data << message
+    end
+
+    def random_selfie
+      dir = File.expand_path("../../img/pictures/", __DIR__)
+      picture = Dir.glob(File.join(dir, "/turquesa_*.jpg")).sample
+
+      return picture if File.exists? picture
+      nil
     end
 
     # TODO: Save old chats in redis and retrieve it when needed
@@ -65,6 +73,30 @@ module Turquoise
 
       @@buffer.shift if @@buffer.size >= BUFFER_MAX
       @@buffer[chat_id] = new(chat_id)
+    end
+
+    struct RequestData
+      include JSON::Serializable
+
+      property model = "gpt-3.5-turbo-0613"
+      property messages = [] of Chat::Completion::Message
+      property temperature = 1.2
+      property functions = [{
+        name:        "send_selfie",
+        description: "Upload portraits of Turquesa",
+        parameters:  {
+          type: "object", properties: {} of String => String,
+        },
+      }]
+
+      def initialize
+      end
+
+      # Keep maximum size and system message
+      def <<(message : Chat::Completion::Message)
+        messages.delete_at(1) if messages.size >= MESSAGES_MAX
+        messages << message
+      end
     end
   end
 end
