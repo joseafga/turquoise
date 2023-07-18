@@ -3,12 +3,10 @@ module Turquoise
     class RenewSubscription < Mosquito::QueuedJob
       param topic : String
 
-      before do
+      def perform
         # unsubscribed before renew
         fail "A inscrição está inativa." unless subscription.active?
-      end
 
-      def perform
         subscription.subscribe
       end
 
