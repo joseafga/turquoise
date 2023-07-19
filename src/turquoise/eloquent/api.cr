@@ -29,7 +29,7 @@ module Turquoise
           property content : String?
           property function_call : NamedTuple(name: String, arguments: String)?
           @[JSON::Field(ignore: true)]
-          property photo : String?
+          property photo : String | File | Nil
 
           def initialize(@role, @content, @name = nil, @photo = nil)
           end

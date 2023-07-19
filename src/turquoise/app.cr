@@ -22,8 +22,9 @@ require "granite"
 require "granite/adapter/pg"
 require "../ext/pubsubhubbub/subscriber"
 require "./helpers"
-require "./hooks"
 require "./eloquent"
+require "./pets"
+require "./hooks"
 require "./models/*"
 
 # TODO: Write documentation for `Turquoise`

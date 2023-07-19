@@ -69,8 +69,7 @@ module Turquoise
       dir = File.expand_path("../../img/pictures/", __DIR__)
       picture = Dir.glob(File.join(dir, "/turquesa_*.jpg")).sample
 
-      return picture if File.exists? picture
-      nil
+      File.open(picture, "rb") if File.exists? picture
     end
 
     # TODO: Save old chats in redis and retrieve it when needed

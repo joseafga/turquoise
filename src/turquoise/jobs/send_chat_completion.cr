@@ -12,7 +12,7 @@ module Turquoise
         options = options.merge({reply_to_message_id: nil}) if message_id.zero? || eloquent.chat.type == "private"
 
         if photo = reply.photo
-          Bot.send_photo **options.merge({photo: ::File.open(photo, "rb"), caption: reply.escape_md})
+          Bot.send_photo **options.merge({photo: photo, caption: reply.escape_md})
           return
         end
 
