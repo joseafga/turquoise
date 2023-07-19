@@ -19,7 +19,7 @@ module Turquoise
 
           Helpers.persist_chat(my_chat_member.chat)
           ctx.send_chat_action(:typing)
-          Jobs::SendEloquentMessage.new(
+          Jobs::SendChatCompletion.new(
             chat_id: my_chat_member.chat.id.to_i64,
             text: text,
             message_id: 0_i64
@@ -38,7 +38,7 @@ module Turquoise
 
           Helpers.persist_chat(message.chat)
           ctx.send_chat_action(:typing)
-          Jobs::SendEloquentMessage.new(
+          Jobs::SendChatCompletion.new(
             chat_id: message.chat.id.to_i64,
             text: text,
             message_id: message.message_id.to_i64
@@ -54,7 +54,7 @@ module Turquoise
 
         Helpers.persist_chat(message.chat)
         ctx.send_chat_action(:typing)
-        Jobs::SendEloquentMessage.new(
+        Jobs::SendChatCompletion.new(
           chat_id: message.chat.id.to_i64,
           text: text,
           message_id: message.message_id.to_i64

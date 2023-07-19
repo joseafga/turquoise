@@ -1,6 +1,6 @@
 module Turquoise
   module Jobs
-    class SendEloquentMessage < Mosquito::QueuedJob
+    class SendChatCompletion < Mosquito::QueuedJob
       param chat_id : Int64
       param text : String
       param message_id : Int64
