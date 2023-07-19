@@ -8,10 +8,16 @@ module Turquoise
     @@buffer = {} of Int64 => Eloquent
 
     property chat : Models::Chat
-    property data = RequestData.new
+    property data : RequestData
 
     def initialize(chat_id)
       @chat = Models::Chat.find! chat_id
+      @data = RequestData.new
+      clear
+    end
+
+    def clear
+      @data.messages.clear
       @data << system_role
     end
 

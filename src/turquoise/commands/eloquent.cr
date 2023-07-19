@@ -62,6 +62,14 @@ module Turquoise
       end
     end
 
-    Bot.register chat
+    clear = Tourmaline::CommandHandler.new("limpar") do |ctx|
+      if message = ctx.message
+        Jobs::ResetChatCompletion.new(
+          chat_id: message.chat.id.to_i64
+        ).enqueue
+      end
+    end
+
+    Bot.register chat, clear
   end
 end
