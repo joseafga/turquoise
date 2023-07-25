@@ -1,3 +1,4 @@
+require "json"
 require "./eloquent/api"
 
 module Turquoise
@@ -13,15 +14,23 @@ module Turquoise
     def initialize(chat_id)
       @chat = Models::Chat.find! chat_id
       @data = RequestData.new
-      clear
+
+      if messages = Redis.get("turquoise:eloquent:chat:#{@chat.id}")
+        @data.messages = data.messages.class.from_json(messages)
+      else
+        clear
+      end
     end
 
+    # reset chat messages
     def clear
-      @data.messages.clear
-      @data << system_role
+      data.messages.clear
+      data << system_role
+      Redis.set "turquoise:eloquent:chat:#{chat.id}", data.messages.to_json
     end
 
     def request
+      Log.debug { "eloquent -- #{chat.id}: #{data.messages}" }
       headers = HTTP::Headers{"Authorization" => "Bearer #{ENV["ELOQUENT_API_KEY"]}", "Content-Type" => "application/json"}
       response = HTTP::Client.post(ENDPOINT, body: data.to_json, headers: headers)
 
@@ -43,10 +52,14 @@ module Turquoise
         case function[:name]?
         when "send_selfie"
           send_selfie
+        when "send_cat"
+          send_cat
+        when "send_dog"
+          send_dog
         end
       end
 
-      Log.debug { "eloquent -- #{chat.id}: #{data.messages}" }
+      Redis.set "turquoise:eloquent:chat:#{chat.id}", data.messages.to_json
       data.messages.last
     end
 
@@ -59,9 +72,23 @@ module Turquoise
     end
 
     def send_selfie
-      data << Chat::Completion::Message.new :function, %({"description": "Cute portrait"}), name: "send_selfie"
+      data << Chat::Completion::Message.new :function, "Cute portrait", name: "send_selfie"
       message = request.choices.first[:message]
       message.photo = random_selfie
+      data << message
+    end
+
+    def send_cat
+      data << Chat::Completion::Message.new :function, "Fluffy cat", name: "send_cat"
+      message = request.choices.first[:message]
+      message.photo = Pets::Cat.random
+      data << message
+    end
+
+    def send_dog
+      data << Chat::Completion::Message.new :function, "Beautiful dog", name: "send_dog"
+      message = request.choices.first[:message]
+      message.photo = Pets::Dog.random
       data << message
     end
 
@@ -88,10 +115,16 @@ module Turquoise
       property temperature = 1.2
       property functions = [{
         name:        "send_selfie",
-        description: "Upload portraits of Turquesa",
-        parameters:  {
-          type: "object", properties: {} of String => String,
-        },
+        description: "Send portraits of yourself",
+        parameters:  {type: "object", properties: {} of String => String},
+      }, {
+        name:        "send_cat",
+        description: "Send picture of a cat",
+        parameters:  {type: "object", properties: {} of String => String},
+      }, {
+        name:        "send_dog",
+        description: "Send picture of a dog",
+        parameters:  {type: "object", properties: {} of String => String},
       }]
 
       def initialize
