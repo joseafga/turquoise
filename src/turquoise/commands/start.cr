@@ -1,6 +1,6 @@
 module Turquoise
   module Commands
-    start = Tourmaline::CommandHandler.new(["help", "start"]) do |ctx|
+    start = Tourmaline::CommandHandler.new(["help", "ajuda", "start"]) do |ctx|
       markup = Tourmaline::Client.build_reply_keyboard_markup(columns: 2) do |kb|
         kb.button "/sobre"
         kb.button "/gato 😺"

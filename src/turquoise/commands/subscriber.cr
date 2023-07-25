@@ -1,6 +1,6 @@
 module Turquoise
   module Commands
-    subscribe = Tourmaline::CommandHandler.new("inscrever") do |ctx|
+    subscribe = Tourmaline::CommandHandler.new(["subscribe", "inscrever"]) do |ctx|
       if message = ctx.message
         user = Tourmaline::User.cast(message.from)
         chat = Tourmaline::Chat.cast(message.chat)
@@ -12,7 +12,7 @@ module Turquoise
       end
     end
 
-    unsubscribe = Tourmaline::CommandHandler.new("desinscrever") do |ctx|
+    unsubscribe = Tourmaline::CommandHandler.new(["unsubscribe", "desinscrever"]) do |ctx|
       if message = ctx.message
         chat = Tourmaline::Chat.cast(message.chat)
         topic = "https://www.youtube.com/xml/feeds/videos.xml?channel_id=#{ctx.text}"
