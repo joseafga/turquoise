@@ -5,8 +5,6 @@ module Turquoise
   class Eloquent
     ENDPOINT     = "#{ENV["ELOQUENT_HOST_URL"]}/v1/chat/completions"
     MESSAGES_MAX = ENV["ELOQUENT_MESSAGE_MAX"].to_i
-    BUFFER_MAX   = ENV["ELOQUENT_BUFFER_MAX"].to_i
-    @@buffer = {} of Int64 => Eloquent
 
     property chat : Models::Chat
     property data : RequestData
@@ -97,14 +95,6 @@ module Turquoise
       picture = Dir.glob(File.join(dir, "/turquesa_*.jpg")).sample
 
       File.open(picture, "rb") if File.exists? picture
-    end
-
-    # TODO: Save old chats in redis and retrieve it when needed
-    def self.instance(chat_id)
-      return @@buffer[chat_id] if @@buffer.has_key?(chat_id)
-
-      @@buffer.shift if @@buffer.size >= BUFFER_MAX
-      @@buffer[chat_id] = new(chat_id)
     end
 
     struct RequestData
