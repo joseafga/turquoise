@@ -20,7 +20,7 @@ module Turquoise
       end
     end
 
-    # reset chat messages
+    # Reset chat messages.
     def clear
       data.messages.clear
       data << system_role
@@ -48,12 +48,10 @@ module Turquoise
       # https://platform.openai.com/docs/guides/gpt/function-calling
       if function = message.function_call
         case function[:name]?
-        when "send_selfie"
-          send_selfie
-        when "send_cat"
-          send_cat
-        when "send_dog"
-          send_dog
+        when "attach_selfie"
+          attach_selfie
+        when "attach_pet_picture"
+          attach_pet_picture function[:arguments]
         end
       end
 
@@ -69,30 +67,30 @@ module Turquoise
       end
     end
 
-    def send_selfie
-      data << Chat::Completion::Message.new :function, "Cute portrait", name: "send_selfie"
-      message = request.choices.first[:message]
-      message.photo = random_selfie
-      data << message
+    # Gets a random selfie and uses the filename as image description
+    def attach_selfie
+      if file = random_selfie
+        data << Chat::Completion::Message.new :function, %({"description": "#{File.basename(file.path, ".jpg")}"}), name: "attach_selfie"
+        message = request.choices.first[:message]
+        message.photo = file
+        data << message
+      end
     end
 
-    def send_cat
-      data << Chat::Completion::Message.new :function, "Fluffy cat", name: "send_cat"
-      message = request.choices.first[:message]
-      message.photo = Pets::Cat.random
-      data << message
-    end
+    def attach_pet_picture(args)
+      pet = NamedTuple(pet: Pets).from_json(args)[:pet]
+      image = pet.random_with_breed(mime_types: "jpg,png")
+      breeds = image[:breeds].join(", ") { |breed| breed[:name] }
 
-    def send_dog
-      data << Chat::Completion::Message.new :function, "Beautiful dog", name: "send_dog"
+      data << Chat::Completion::Message.new :function, %({"breed": "#{breeds}"}), name: "attach_pet_picture"
       message = request.choices.first[:message]
-      message.photo = Pets::Dog.random
+      message.photo = image[:url]
       data << message
     end
 
     def random_selfie
       dir = File.expand_path("../../img/pictures/", __DIR__)
-      picture = Dir.glob(File.join(dir, "/turquesa_*.jpg")).sample
+      picture = Dir.glob(File.join(dir, "/*.jpg")).sample
 
       File.open(picture, "rb") if File.exists? picture
     end
@@ -104,17 +102,23 @@ module Turquoise
       property messages = [] of Chat::Completion::Message
       property temperature = 1.2
       property functions = [{
-        name:        "send_selfie",
-        description: "Send portraits of yourself",
-        parameters:  {type: "object", properties: {} of String => String},
+        name:        "attach_selfie",
+        description: "Send picture of yourself",
+        parameters:  {type: "object", properties: {} of Nil => Nil},
       }, {
-        name:        "send_cat",
-        description: "Send picture of a cat",
-        parameters:  {type: "object", properties: {} of String => String},
-      }, {
-        name:        "send_dog",
-        description: "Send picture of a dog",
-        parameters:  {type: "object", properties: {} of String => String},
+        name:        "attach_pet_picture",
+        description: "Send picture of a cat or dog",
+        parameters:  {
+          type:       "object",
+          properties: {
+            pet: {
+              type:        "string",
+              description: "Choose between cat or dog picture",
+              enum:        ["cat", "dog"],
+            },
+          },
+          required: ["pet"],
+        },
       }]
 
       def initialize

@@ -1,25 +1,36 @@
 require "uri/params"
 
 module Turquoise
-  module Pets
-    abstract class Pet
-      # Returns pet image url. Requires `API_URL` constant defined
-      def self.random(**kargs) : String
-        options = {format: "src"}.merge(kargs) # `src` will redirect straight to the image
-        params = URI::Params.encode(options)
+  enum Pets
+    Cat
+    Dog
 
-        {% begin %}
-        "#{{{ @type }}::API_URL}?#{params}"
-        {% end %}
+    # Get API URL for each pet
+    def api_url(path = nil, **kargs) : String
+      params = URI::Params.encode(kargs)
+
+      case self
+      when .cat?
+        "https://api.thecatapi.com/v1/images/#{path}?#{params}"
+      when .dog?
+        "https://api.thedogapi.com/v1/images/#{path}?#{params}"
+      else
+        raise "Unknown pet `#{self}`"
       end
     end
 
-    class Cat < Pet
-      API_URL = "https://api.thecatapi.com/v1/images/search"
+    def random_with_breed(**kargs)
+      options = {has_breeds: "1"}.merge(kargs)
+      image = random(**options)
+      response = HTTP::Client.get api_url(image[:id], **options)
+
+      NamedTuple(id: String, url: String, breeds: Array(NamedTuple(name: String))).from_json(response.body)
     end
 
-    class Dog < Pet
-      API_URL = "https://api.thedogapi.com/v1/images/search"
+    def random(**kargs)
+      response = HTTP::Client.get api_url("search", **kargs)
+
+      Array(NamedTuple(id: String, url: String)).from_json(response.body).first
     end
   end
 end
