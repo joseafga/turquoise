@@ -48,12 +48,12 @@ module Turquoise
 
       # Process Function calling
       # https://platform.openai.com/docs/guides/gpt/function-calling
-      if function = message.function_call
+      if (function = message.function_call) && message.content.nil?
         case function[:name]?
-        when "attach_selfie"
-          attach_selfie
-        when "attach_pet_image"
-          attach_pet_image function[:arguments]
+        when "send_selfie"
+          send_selfie
+        when "send_pet_image"
+          send_pet_image function[:arguments]
         end
       end
 
@@ -71,21 +71,23 @@ module Turquoise
       end
     end
 
-    # Gets a random selfie and uses the filename as image description
-    def attach_selfie
+    # Gets a random selfie and uses the filename as image description.
+    def send_selfie
       if file = random_selfie
-        data << Chat::Completion::Message.new :function, %({"description": "#{File.basename(file.path, ".jpg")}"}), name: "attach_selfie"
+        data << Chat::Completion::Message.new :function, %({"description": "#{File.basename(file.path, ".jpg")}"}), name: "send_selfie"
         message = request.choices.first[:message]
         message.photo = file
         data << message
       end
     end
 
-    def attach_pet_image(args)
+    # Gets a random pet image with breed using `Turquoise::Pets`.
+    # `args` use JSON schema provided by ChatGPT.
+    def send_pet_image(args)
       pet = NamedTuple(pet: Pets).from_json(args)[:pet]
       image = pet.random_with_breed(mime_types: "jpg,png")
 
-      data << Chat::Completion::Message.new :function, %({"breed": "#{image.breeds_to_list}"}), name: "attach_pet_picture"
+      data << Chat::Completion::Message.new :function, %({"breed": "#{image.breeds_to_list}"}), name: "send_pet_image"
       message = request.choices.first[:message]
       message.photo = image.url
       data << message
@@ -93,9 +95,9 @@ module Turquoise
 
     def random_selfie
       dir = File.expand_path("../../img/pictures/", __DIR__)
-      picture = Dir.glob(File.join(dir, "/*.jpg")).sample
+      image = Dir.glob(File.join(dir, "/*.jpg")).sample
 
-      File.open(picture, "rb") if File.exists? picture
+      File.open(image, "rb") if File.exists?(image)
     end
 
     struct RequestData
@@ -103,20 +105,20 @@ module Turquoise
 
       property model = "gpt-3.5-turbo-0613"
       property messages = [] of Chat::Completion::Message
-      property temperature = 1.2
+      property temperature = 0.9
       property functions = [{
-        name:        "attach_selfie",
-        description: "Send picture of yourself",
+        name:        "send_selfie",
+        description: "Send photo of yourself when the user requests it",
         parameters:  {type: "object", properties: {} of Nil => Nil},
       }, {
-        name:        "attach_pet_picture",
-        description: "Send picture of a cat or dog",
+        name:        "send_pet_image",
+        description: "Send a random image of a cat or dog",
         parameters:  {
           type:       "object",
           properties: {
             pet: {
               type:        "string",
-              description: "Choose between cat or dog picture",
+              description: "Choose between cat or dog image",
               enum:        ["cat", "dog"],
             },
           },
