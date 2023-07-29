@@ -1,19 +1,21 @@
 require "json"
 require "./eloquent/api"
 
+# require "./eloquent/functions"
+
 module Turquoise
   class Eloquent
     ENDPOINT     = "#{ENV["ELOQUENT_HOST_URL"]}/v1/chat/completions"
     MESSAGES_MAX = ENV["ELOQUENT_MESSAGE_MAX"].to_i
 
-    property chat : Models::Chat
+    getter chat_id : Int64
     property data : RequestData
 
     def initialize(chat_id)
-      @chat = Models::Chat.find! chat_id
+      @chat_id = chat_id
       @data = RequestData.new
 
-      if messages = Redis.get("turquoise:eloquent:chat:#{@chat.id}")
+      if messages = Redis.get("turquoise:eloquent:chat:#{@chat_id}")
         @data.messages = data.messages.class.from_json(messages)
       else
         clear
@@ -24,11 +26,11 @@ module Turquoise
     def clear
       data.messages.clear
       data << system_role
-      Redis.set "turquoise:eloquent:chat:#{chat.id}", data.messages.to_json
+      Redis.set "turquoise:eloquent:chat:#{chat_id}", data.messages.to_json
     end
 
     def request
-      Log.debug { "eloquent -- #{chat.id}: #{data.messages}" }
+      Log.debug { "eloquent -- #{chat_id}: #{data.messages}" }
       headers = HTTP::Headers{"Authorization" => "Bearer #{ENV["ELOQUENT_API_KEY"]}", "Content-Type" => "application/json"}
       response = HTTP::Client.post(ENDPOINT, body: data.to_json, headers: headers)
 
@@ -50,16 +52,18 @@ module Turquoise
         case function[:name]?
         when "attach_selfie"
           attach_selfie
-        when "attach_pet_picture"
-          attach_pet_picture function[:arguments]
+        when "attach_pet_image"
+          attach_pet_image function[:arguments]
         end
       end
 
-      Redis.set "turquoise:eloquent:chat:#{chat.id}", data.messages.to_json
+      Redis.set "turquoise:eloquent:chat:#{chat_id}", data.messages.to_json
       data.messages.last
     end
 
     def system_role
+      chat = Models::Chat.find!(chat_id)
+
       if chat.type == "private"
         Chat::Completion::Message.new :system, ENV["ELOQUENT_ROLE_PRIVATE"]
       else
@@ -77,14 +81,13 @@ module Turquoise
       end
     end
 
-    def attach_pet_picture(args)
+    def attach_pet_image(args)
       pet = NamedTuple(pet: Pets).from_json(args)[:pet]
       image = pet.random_with_breed(mime_types: "jpg,png")
-      breeds = image[:breeds].join(", ") { |breed| breed[:name] }
 
-      data << Chat::Completion::Message.new :function, %({"breed": "#{breeds}"}), name: "attach_pet_picture"
+      data << Chat::Completion::Message.new :function, %({"breed": "#{image.breeds_to_list}"}), name: "attach_pet_picture"
       message = request.choices.first[:message]
-      message.photo = image[:url]
+      message.photo = image.url
       data << message
     end
 

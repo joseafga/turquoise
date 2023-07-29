@@ -1,3 +1,4 @@
+require "json"
 require "uri/params"
 
 module Turquoise
@@ -22,15 +23,29 @@ module Turquoise
     def random_with_breed(**kargs)
       options = {has_breeds: "1"}.merge(kargs)
       image = random(**options)
-      response = HTTP::Client.get api_url(image[:id], **options)
+      response = HTTP::Client.get api_url(image.id, **options)
 
-      NamedTuple(id: String, url: String, breeds: Array(NamedTuple(name: String))).from_json(response.body)
+      Pet.from_json(response.body)
     end
 
     def random(**kargs)
       response = HTTP::Client.get api_url("search", **kargs)
 
-      Array(NamedTuple(id: String, url: String)).from_json(response.body).first
+      Array(Pet).from_json(response.body).first
+    end
+  end
+
+  struct Pet
+    include JSON::Serializable
+
+    property id : String
+    property url : String
+    property breeds : Array(NamedTuple(name: String))?
+
+    def breeds_to_list
+      breeds.not_nil!.join(", ") do |breed|
+        breed[:name]
+      end
     end
   end
 end

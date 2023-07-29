@@ -35,13 +35,14 @@ module Turquoise
 
         if text = message.text
           next if text.empty?
+          message_id = (message.chat.type == "private") ? 0_i64 : message.message_id.to_i64
 
           Helpers.persist_chat(message.chat)
           ctx.send_chat_action(:typing)
           Jobs::SendChatCompletion.new(
             chat_id: message.chat.id.to_i64,
             text: text,
-            message_id: message.message_id.to_i64
+            message_id: message_id
           ).enqueue
         end
       end

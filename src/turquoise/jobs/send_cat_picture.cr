@@ -9,9 +9,9 @@ module Turquoise
         image = Pets::Cat.random(mime_types: format)
 
         if format == "gif"
-          Bot.send_animation animation: image[:url], chat_id: chat_id
+          Bot.send_animation animation: image.url, chat_id: chat_id
         else
-          Bot.send_photo photo: image[:url], chat_id: chat_id
+          Bot.send_photo photo: image.url, chat_id: chat_id
         end
       end
     end

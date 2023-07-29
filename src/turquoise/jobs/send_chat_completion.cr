@@ -9,10 +9,9 @@ module Turquoise
       throttle limit: 3, per: 1.minute
 
       def perform
-        eloquent = Eloquent.new(chat_id)
-        reply = eloquent.completion(text)
+        reply = Eloquent.new(chat_id).completion(text)
         options = {chat_id: chat_id, reply_to_message_id: message_id}
-        options = options.merge({reply_to_message_id: nil}) if message_id.zero? || eloquent.chat.type == "private"
+        options = options.merge({reply_to_message_id: nil}) if message_id.zero? # not a reply if message_id is zero
 
         if photo = reply.photo
           Bot.send_photo **options.merge({photo: photo, caption: reply.escape_md})
