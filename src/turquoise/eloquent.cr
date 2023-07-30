@@ -74,7 +74,9 @@ module Turquoise
     # Gets a random selfie and uses the filename as image description.
     def send_selfie
       if file = random_selfie
-        data << Chat::Completion::Message.new :function, %({"description": "#{File.basename(file.path, ".jpg")}"}), name: "send_selfie"
+        description = File.basename(file.path, ".jpg")
+
+        data << Chat::Completion::Message.new :function, %({"description": "#{description}"}), name: "send_selfie"
         message = request.choices.first[:message]
         message.photo = file
         data << message
