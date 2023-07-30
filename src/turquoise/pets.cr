@@ -43,7 +43,7 @@ module Turquoise
     property breeds : Array(NamedTuple(name: String))?
 
     def breeds_to_list
-      breeds.not_nil!.join(", ") do |breed|
+      breeds.try &.join(", ") do |breed|
         breed[:name]
       end
     end

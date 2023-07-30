@@ -17,18 +17,6 @@ module Turquoise
       end
     end
 
-    # Configure webook only if is needed
-    def config_webhook
-      url = File.join(ENV["HOST_URL"], ENV["BOT_WEBHOOK_PATH"])
-
-      unless Redis.get("turquoise:telegram:webhook") == url
-        Log.info { "Configuring Webhook ..." }
-        Bot.delete_webhook
-        Bot.set_webhook url
-        Redis.set "turquoise:telegram:webhook", url
-      end
-    end
-
     # Basically Tourmaline::Server without a new HTTP::Server
     def handle_webhook(context)
       Fiber.current.telegram_bot_server_http_context = context
