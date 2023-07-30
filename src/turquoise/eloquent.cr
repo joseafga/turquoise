@@ -106,7 +106,7 @@ module Turquoise
       include JSON::Serializable
 
       property model = "gpt-3.5-turbo-0613"
-      property messages = [] of Chat::Completion::Message
+      property messages = Deque(Chat::Completion::Message).new(MESSAGES_MAX)
       property temperature = 0.9
       property functions = [{
         name:        "send_selfie",
