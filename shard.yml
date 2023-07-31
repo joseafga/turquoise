@@ -1,5 +1,5 @@
 name: turquoise
-version: 0.2.2
+version: 0.3.0
 
 authors:
   - José Almeida <jose.afga@gmail.com>
@@ -36,7 +36,7 @@ development_dependencies:
     branch: master
   ameba:
     github: crystal-ameba/ameba
-    version: ~> 1.4.0
+    version: ~> 1.5.0
 
 crystal: 1.8.2
 
