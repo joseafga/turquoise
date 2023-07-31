@@ -1,12 +1,13 @@
 module Turquoise
   module Jobs
-    class SendDogImage < Mosquito::QueuedJob
+    class SendPetImage < Mosquito::QueuedJob
+      param pet : String
       param chat_id : Int64
 
       # Send a random static (jpg or png) or animated (gif) image.
       def perform
         format = ["gif", "jpg", "png"].sample
-        image = Pets::Dog.random(mime_types: format)
+        image = Pets.parse(pet).random(mime_types: format)
 
         if format == "gif"
           Bot.send_animation animation: image.url, chat_id: chat_id

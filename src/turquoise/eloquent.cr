@@ -30,7 +30,7 @@ module Turquoise
     end
 
     def request
-      Log.debug { "eloquent -- #{chat_id}: #{data.messages}" }
+      Log.debug { "eloquent -- #{chat_id}: #{data.messages.pretty_inspect}" }
       headers = HTTP::Headers{"Authorization" => "Bearer #{ENV["ELOQUENT_API_KEY"]}", "Content-Type" => "application/json"}
       response = HTTP::Client.post(ENDPOINT, body: data.to_json, headers: headers)
 
@@ -52,8 +52,8 @@ module Turquoise
         case function[:name]?
         when "send_selfie"
           send_selfie
-        when "send_pet_image"
-          send_pet_image function[:arguments]
+        when "send_cat_or_dog"
+          send_cat_or_dog function[:arguments]
         end
       end
 
@@ -85,11 +85,11 @@ module Turquoise
 
     # Gets a random pet image with breed using `Turquoise::Pets`.
     # `args` use JSON schema provided by ChatGPT.
-    def send_pet_image(args)
+    def send_cat_or_dog(args)
       pet = NamedTuple(pet: Pets).from_json(args)[:pet]
       image = pet.random_with_breed(mime_types: "jpg,png")
 
-      data << Chat::Completion::Message.new :function, %({"breed": "#{image.breeds_to_list}"}), name: "send_pet_image"
+      data << Chat::Completion::Message.new :function, %({"breed": "#{image.breeds_to_list}"}), name: "send_cat_or_dog"
       message = request.choices.first[:message]
       message.photo = image.url
       data << message
@@ -110,17 +110,17 @@ module Turquoise
       property temperature = 0.9
       property functions = [{
         name:        "send_selfie",
-        description: "Send photo of yourself when the user requests it",
+        description: "Upload a photo of yourself when requested by the user.",
         parameters:  {type: "object", properties: {} of Nil => Nil},
       }, {
-        name:        "send_pet_image",
-        description: "Send a random image of a cat or dog",
+        name:        "send_cat_or_dog",
+        description: "Upload a random picture of a cat or dog and describe the breed.",
         parameters:  {
           type:       "object",
           properties: {
             pet: {
               type:        "string",
-              description: "Choose between cat or dog image",
+              description: "Choose between cat or dog",
               enum:        ["cat", "dog"],
             },
           },
