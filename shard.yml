@@ -18,7 +18,7 @@ dependencies:
     branch: master
   pubsubhubbub:
     github: joseafga/pubsubhubbub.cr
-    version: ~> 0.1.3
+    branch: main
   pg:
     github: will/crystal-pg
   granite:

@@ -11,7 +11,7 @@ module Turquoise
         else
           raise "Não existe inscrição ativa para este canal."
         end
-  
+
         reply("Desinscrito com sucesso... 🥹")
       rescue ex
         message = "Erro ao desinscrever-se: #{ex.message || ex.cause.try &.message}"
