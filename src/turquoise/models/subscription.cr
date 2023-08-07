@@ -8,7 +8,7 @@ module Turquoise
       has_many chats : Chat, through: :listeners, foreign_key: :subscription_topic
 
       column topic : String, primary: true, auto: false
-      column secret : String? = ENV["HUB_SECRET"]
+      column secret : String? = ENV["YT_SECRET"]
       column is_active : Bool = false
       timestamps
 

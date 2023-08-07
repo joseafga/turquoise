@@ -12,9 +12,9 @@ module Turquoise
 
       case self
       when .cat?
-        "https://api.thecatapi.com/v1/images/#{path}?#{params}"
+        "https://api.thecatapi.com/v1#{path}?#{params}"
       when .dog?
-        "https://api.thedogapi.com/v1/images/#{path}?#{params}"
+        "https://api.thedogapi.com/v1#{path}?#{params}"
       else
         raise "Unknown pet `#{self}`"
       end
@@ -23,13 +23,13 @@ module Turquoise
     def random_with_breed(**kargs)
       options = {has_breeds: "1"}.merge(kargs)
       image = random(**options)
-      response = HTTP::Client.get api_url(image.id, **options)
+      response = HTTP::Client.get api_url("/images/#{image.id}", **options)
 
       Pet.from_json(response.body)
     end
 
     def random(**kargs)
-      response = HTTP::Client.get api_url("search", **kargs)
+      response = HTTP::Client.get api_url("/images/search", **kargs)
 
       Array(Pet).from_json(response.body).first
     end

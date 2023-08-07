@@ -5,8 +5,8 @@ require "./eloquent/api"
 
 module Turquoise
   class Eloquent
-    ENDPOINT     = "#{ENV["ELOQUENT_HOST_URL"]}/v1/chat/completions"
-    MESSAGES_MAX = ENV["ELOQUENT_MESSAGE_MAX"].to_i
+    ENDPOINT     = "https://api.openai.com/v1/chat/completions"
+    MESSAGES_MAX = 20
 
     getter chat_id : Int64
     property data : RequestData
@@ -65,9 +65,9 @@ module Turquoise
       chat = Models::Chat.find!(chat_id)
 
       if chat.type == "private"
-        Chat::Completion::Message.new :system, ENV["ELOQUENT_ROLE_PRIVATE"]
+        Chat::Completion::Message.new :system, "#{ENV["ELOQUENT_ROLE"]} You are in a private chat."
       else
-        Chat::Completion::Message.new :system, ENV["ELOQUENT_ROLE_GROUP"]
+        Chat::Completion::Message.new :system, "#{ENV["ELOQUENT_ROLE"]} You are in a group chatting with friends."
       end
     end
 
