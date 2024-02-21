@@ -15,7 +15,7 @@ dependencies:
     github: gdotdesign/cr-dotenv
   tourmaline:
     github: protoncr/tourmaline
-    branch: master
+    commit: 5772091
   pubsubhubbub:
     github: joseafga/pubsubhubbub.cr
     branch: main
