@@ -8,7 +8,28 @@ Telegram bot for YouTube notifications and fun.
 
 ## Installation
 
-TODO: Write installation instructions here
+Rename `.env.example` to `.env` and configure according to your needs.
+
+Load environment variables
+
+```bash
+source .env
+export DATABASE_URL
+```
+
+Run Micrate to setup database
+
+```bash
+bin/micrate create
+bin/micrate up
+```
+
+Run or build bot and worker
+
+```bash
+crystal run src/turquoise.cr -- -m 'Ready!' &
+crystal run src/worker.cr
+```
 
 ## Usage
 
