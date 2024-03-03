@@ -1,5 +1,6 @@
 module Turquoise
   module Commands
+    # TODO: internationalization
     # Eloquent message when someone enter in the group.
     Bot.on :new_chat_members do |ctx|
       if message = ctx.message
