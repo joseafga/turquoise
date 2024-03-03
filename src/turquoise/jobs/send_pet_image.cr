@@ -7,7 +7,7 @@ module Turquoise
       # Send a random static (jpg or png) or animated (gif) image.
       def perform
         format = ["gif", "jpg", "png"].sample
-        image = Pets.parse(pet).random(mime_types: format)
+        image = Pets::Images.parse(pet).random(mime_types: format)
 
         if format == "gif"
           Bot.send_animation animation: image.url, chat_id: chat_id
