@@ -22,18 +22,18 @@ module Turquoise
       # setup function calling
       @data.tools << Chat::Tool.new(
         name: "send_selfie_image",
-        description: "Send a image of yourself."
+        description: "Send a selfie. Call this when you need to send a photo of yourself."
       )
 
       @data.tools << Chat::Tool.new(
         name: "send_custom_image",
-        description: "Creates an image using AI based on the user's request.",
+        description: "Send an image using AI. Call this when you need to create a custom image, for example when they ask for 'Create an image of a dog'.",
         parameters: {
           type:       "object",
           properties: {
             "prompt" => {
               type:        "string",
-              description: "Description of what will be generated.",
+              description: "Description of what you want to create.",
             },
           },
           required: ["prompt"],
