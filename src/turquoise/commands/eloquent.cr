@@ -45,6 +45,7 @@ module Turquoise
             chat_id: message.chat.id.to_i64,
             message_id: message.message_id.to_i64,
             text: text,
+            from_name: (message.from.try &.first_name).to_s
           ).enqueue
         end
       end
