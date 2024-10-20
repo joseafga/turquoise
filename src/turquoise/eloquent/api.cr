@@ -20,24 +20,20 @@ module Turquoise
             System
             User
             Assistant
+            Tool
           end
 
           property role : Role
           @[JSON::Field(emit_null: true)]
-          property content : String?
+          property content : String
           @[JSON::Field(ignore: true)]
           property photo : String | File | Nil
 
-          def initialize(@role, @content, @photo = nil)
+          def initialize(@role, @content = "", @photo = nil)
           end
 
           def escape_md
             Helpers.escape_md content
-          end
-
-          # Remove all keywords from reponses
-          def sanitize(replace = "")
-            @content = to_s.gsub(/%([A-Z0-9 _]*)%/, replace).strip
           end
 
           def to_s
@@ -48,28 +44,71 @@ module Turquoise
 
       struct Result
         include JSON::Serializable
-
-        property result : NamedTuple(response: String)
-        property success : Bool
+        property result : NamedTuple(response: String?, tool_calls: Array(Tool::Call) | Nil)
+        property? success : Bool
         property errors : Array(NamedTuple(message: String))
         property messages : Array(String)
       end
-    end
 
-    struct RequestData
-      include JSON::Serializable
-      property messages : Deque(Chat::Completion::Message)
-      property max_tokens : Int32?
+      struct Request
+        include JSON::Serializable
+        property messages : Deque(Chat::Completion::Message)
+        property max_tokens : Int32?
+        property temperature : Int32?
+        property top_p : Int32?
+        property top_k : Int32?
+        property seed : Int32?
+        property repetition_penalty : Int32?
+        property frequency_penalty : Int32?
+        property presence_penalty : Int32?
+        property tools
 
-      def initialize
-        @messages = Deque(Chat::Completion::Message).new(MAX_MESSAGES)
-        @max_tokens = MAX_TOKENS
+        def initialize
+          @messages = Deque(Chat::Completion::Message).new(MAX_MESSAGES)
+          @max_tokens = MAX_TOKENS
+          @tools = [] of Tool
+        end
+
+        # Keep maximum size and system message
+        def <<(message : Chat::Completion::Message)
+          messages.shift if messages.size >= MAX_MESSAGES
+          messages.push message
+        end
       end
 
-      # Keep maximum size and system message
-      def <<(message : Chat::Completion::Message)
-        messages.shift if messages.size >= MAX_MESSAGES
-        messages.push message
+      struct Tool
+        include JSON::Serializable
+        property name : String
+        property description : String
+        property parameters
+
+        def initialize(@name, @description, @parameters = {
+                         type:       "object",
+                         properties: {} of String => NamedTuple(type: String, description: String),
+                         required:   [] of String,
+                       })
+        end
+
+        struct Call
+          include JSON::Serializable
+          property arguments : Hash(String, String)
+          property name : String
+        end
+      end
+    end
+
+    module Prompt
+      struct Request
+        include JSON::Serializable
+        property prompt : String
+        property image : File?
+        property mask : File?
+        property num_steps : Int32?
+        property strength : Int32?
+        property guidance : Float32?
+
+        def initialize(@prompt, @num_steps = nil)
+        end
       end
     end
   end

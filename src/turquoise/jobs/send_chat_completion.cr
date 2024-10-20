@@ -6,19 +6,20 @@ module Turquoise
       param chat_id : Int64
       param text : String
       param message_id : Int64
-      throttle limit: 3, per: 1.minute
+      param from_name : String = ""
+      throttle limit: 6, per: 1.minute
 
       def perform
-        reply = Eloquent.new(chat_id).completion(text)
+        eloquent = Eloquent.new(chat_id)
+        message = eloquent.completion(text)
         options = {chat_id: chat_id, reply_to_message_id: message_id}
-        options = options.merge({reply_to_message_id: nil}) if message_id.zero? # not a reply if message_id is zero
 
-        if photo = reply.photo
-          Bot.send_photo **options.merge({photo: photo, caption: reply.escape_md})
+        if photo = message.photo
+          Bot.send_photo **options.merge({photo: photo, caption: message.escape_md})
           return
         end
 
-        Bot.send_message **options.merge({text: reply.escape_md})
+        Bot.send_message **options.merge({text: message.escape_md})
       end
 
       def reschedule_interval(retry_count)

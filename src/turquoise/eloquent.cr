@@ -3,20 +3,28 @@ require "./eloquent/api"
 
 module Turquoise
   class Eloquent
-    MODEL        = "@hf/thebloke/openhermes-2.5-mistral-7b-awq"
-    ENDPOINT     = "https://api.cloudflare.com/client/v4/accounts/#{ENV["ELOQUENT_ACCOUNT_ID"]}/ai/run/#{MODEL}"
-    MAX_MESSAGES = 10
+    MODEL = {
+      text_generation: "@hf/nousresearch/hermes-2-pro-mistral-7b",
+    }
+    ENDPOINT     = "https://api.cloudflare.com/client/v4/accounts/#{ENV["ELOQUENT_ACCOUNT_ID"]}/ai/run/"
+    MAX_MESSAGES = 6
     MAX_TOKENS   = nil # Defaults is 256
     HEADERS      = HTTP::Headers{"Authorization" => "Bearer #{ENV["ELOQUENT_API_KEY"]}", "Content-Type" => "application/json"}
 
-    getter chat_id : Int64
-    property data : RequestData
+    getter chat : Models::Chat
+    property data : Chat::Request
 
     def initialize(chat_id)
-      @chat_id = chat_id
-      @data = RequestData.new
+      @chat = Models::Chat.find!(chat_id)
+      @data = Chat::Request.new
 
-      if messages = Redis.get("turquoise:eloquent:chat:#{@chat_id}")
+      # setup function calling
+      @data.tools << Chat::Tool.new(
+        name: "send_selfie_image",
+        description: "Send a image of yourself."
+      )
+
+      if messages = Redis.get("turquoise:eloquent:chat:#{@chat.id}")
         @data.messages = data.messages.class.from_json(messages)
       else
         clear
@@ -26,19 +34,23 @@ module Turquoise
     # Reset chat messages.
     def clear
       data.messages.clear
-      Redis.del "turquoise:eloquent:chat:#{chat_id}"
+      Redis.del "turquoise:eloquent:chat:#{chat.id}"
     end
 
-    private def request(body : RequestData)
+    private def request(body : Chat::Request)
       # Insert system message to IA acts like
       system_message = Chat::Completion::Message.new :system, system_role
       body.messages = body.messages.dup.insert 0, system_message
 
-      Log.debug { "eloquent -- #{chat_id}: #{body.to_pretty_json}" }
-      response = HTTP::Client.post ENDPOINT, body: body.to_json, headers: HEADERS
+      Log.debug { "eloquent -- #{chat.id}: #{body.to_pretty_json}" }
+      response = HTTP::Client.post "#{ENDPOINT}#{MODEL[:text_generation]}", body: body.to_json, headers: HEADERS
 
-      raise "eloquent -- #{response.status_code} #{response.status}: #{response.body}" unless response.success?
-      Chat::Result.from_json response.body
+      case response.headers["Content-Type"]
+      when "application/json"
+        Chat::Result.from_json response.body
+      else
+        raise "eloquent -- Unknown Content-Type: #{response.headers["Content-Type"]}"
+      end
     end
 
     def completion(text : String) : Chat::Completion::Message
@@ -46,74 +58,53 @@ module Turquoise
       res = request(data)
 
       # When some error happen, skip store data but show message to user
-      if res.errors.any?
+      unless res.errors.empty?
         return Chat::Completion::Message.new :assistant, res.errors.join('\n')
       end
 
-      message = process(Chat::Completion::Message.new :assistant, res.result[:response])
+      message = Chat::Completion::Message.new :assistant, res.result[:response].to_s
 
-      data << message
-      Redis.set "turquoise:eloquent:chat:#{chat_id}", data.messages.to_json
-      message.sanitize
-      message
-    end
-
-    def process(message : Chat::Completion::Message)
-      if match = message.to_s.match(/%([A-Z0-9 _]*)%/)
-        case match[1]
-        when "SELFIE"
-          send_selfie pointerof(message)
+      # Execute function calling
+      res.result[:tool_calls].try &.each do |tool_call|
+        case tool_call.name
+        when "send_selfie_image"
+          send_selfie_image tool_call, pointerof(message)
         else
-          # TODO: Image Generation
-          message.content = "TODO: Image Generation (#{match[1]})"
+          # TODO: Undefined tool call
+          message.content = "TODO: #{tool_call}"
         end
       end
 
+      data << message
+      Redis.set "turquoise:eloquent:chat:#{chat.id}", data.messages.to_json
       message
     end
 
     # TODO: internationalization
     def system_role
-      chat = Models::Chat.find!(chat_id)
-
       if chat.type == "private"
-        "#{ENV["ELOQUENT_ROLE"]} You are in a private chat."
+        "#{ENV["ELOQUENT_ROLE"]} You are in a private chat with #{chat.first_name}."
       else
         "#{ENV["ELOQUENT_ROLE"]} You are in a group chatting with friends."
       end
     end
 
-    # Gets a random pet image with breed using `Turquoise::Pets`.
-    # `args` use JSON schema provided by ChatGPT.
-    def send_cat_or_dog(args)
-      pet = Pets::Images.parse(JSON.parse(args)["pet"].as_s)
-      image = pet.random_with_breed(mime_types: "jpg,png")
+    def send_selfie_image(tool_call : Chat::Tool::Call, message : Chat::Completion::Message*)
+      file = random_selfie
+      description = File.basename(file.path, ".jpg")
 
-      data << Chat::Completion::Message.new :function, %({"breed": "#{image.breeds_to_list}"}), name: "send_cat_or_dog"
-      message = request(data).choices.first[:message]
-      message.photo = image.url
-      data << message
-    end
-
-    def send_selfie(message : Chat::Completion::Message*)
-      if file = random_selfie
-        description = File.basename(file.path, ".jpg")
-
-        # TODO: internationalization
-        selfie = RequestData.new
-        selfie << Chat::Completion::Message.new :user, "Reescreva com suas palavras: #{description}."
-        res = request(selfie).result[:response]
-
-        # Store fake expected response based on image description for best future responses
-        message.value = Chat::Completion::Message.new :assistant, "%SELFIE%\n#{res}", photo: file
-      end
+      # Store some image information to IA generate response based on this
+      data << Chat::Completion::Message.new :tool, %({"image_description": "#{description}."})
+      res = request(data)
+      message.value.content = res.result[:response].to_s
+      message.value.photo = file
     end
 
     def random_selfie
       dir = File.expand_path("../../img/pictures/", __DIR__)
       image = Dir.glob(File.join(dir, "/*.jpg")).sample
 
-      File.open(image, "rb") if File.exists?(image)
+      File.open(image, "rb")
     end
   end
 end
