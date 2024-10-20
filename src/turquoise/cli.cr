@@ -9,7 +9,7 @@ module Turquoise
     class_property server_port = 3000
     class_property welcome_chat = ENV["BOT_OWNER"]
     class_property welcome_message = "Ready!"
-    class_property? poller = false
+    class_property? poller = true
 
     private def server : HTTP::Server
       @@server ||= HTTP::Server.new([
@@ -39,8 +39,8 @@ module Turquoise
           Log.info { "Deleting Telegram webhook." }
           Bot.delete_webhook
         end
-        parser.on "--poller", "Use bot puller instead of webhook" do
-          @@poller = true
+        parser.on "--webhook", "Use bot webhook instead of puller" do
+          @@poller = false
         end
         parser.on "-h", "--help", "Show help" do
           puts parser
@@ -55,6 +55,7 @@ module Turquoise
       if poller?
         Bot.poll
       else
+        Bot.set_webhook File.join(ENV["HOST_URL"], ENV["BOT_WEBHOOK_PATH"])
         address = server.bind_tcp server_port
         Log.info { "Listening on http://#{address}" }
         server.listen
