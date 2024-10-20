@@ -5,6 +5,7 @@ module Turquoise
   class Eloquent
     MODEL = {
       text_generation: "@hf/nousresearch/hermes-2-pro-mistral-7b",
+      text_to_image:   "@cf/stabilityai/stable-diffusion-xl-base-1.0",
     }
     ENDPOINT     = "https://api.cloudflare.com/client/v4/accounts/#{ENV["ELOQUENT_ACCOUNT_ID"]}/ai/run/"
     MAX_MESSAGES = 6
@@ -23,6 +24,20 @@ module Turquoise
         name: "send_selfie_image",
         description: "Send a image of yourself."
       )
+
+      @data.tools << Chat::Tool.new(
+        name: "send_custom_image",
+        description: "Creates an image using AI based on the user's request.",
+        parameters: {
+          type:       "object",
+          properties: {
+            "prompt" => {
+              type:        "string",
+              description: "Description of what will be generated.",
+            },
+          },
+          required: ["prompt"],
+        })
 
       if messages = Redis.get("turquoise:eloquent:chat:#{@chat.id}")
         @data.messages = data.messages.class.from_json(messages)
@@ -53,6 +68,20 @@ module Turquoise
       end
     end
 
+    private def request(body : Prompt::Request)
+      Log.debug { "eloquent -- #{chat.id}: #{body.to_pretty_json}" }
+      response = HTTP::Client.post "#{ENDPOINT}#{MODEL[:text_to_image]}", body: body.to_json, headers: HEADERS
+
+      case response.headers["Content-Type"]
+      when "image/png"
+        File.tempfile(suffix: ".png") do |file|
+          file.print response.body
+        end
+      else
+        raise "eloquent -- Unknown Content-Type: #{response.headers["Content-Type"]}"
+      end
+    end
+
     def completion(text : String) : Chat::Completion::Message
       data << Chat::Completion::Message.new :user, text
       res = request(data)
@@ -69,6 +98,8 @@ module Turquoise
         case tool_call.name
         when "send_selfie_image"
           send_selfie_image tool_call, pointerof(message)
+        when "send_custom_image"
+          send_custom_image tool_call, pointerof(message)
         else
           # TODO: Undefined tool call
           message.content = "TODO: #{tool_call}"
@@ -105,6 +136,16 @@ module Turquoise
       image = Dir.glob(File.join(dir, "/*.jpg")).sample
 
       File.open(image, "rb")
+    end
+
+    def send_custom_image(tool_call : Chat::Tool::Call, message : Chat::Completion::Message*)
+      data << Chat::Completion::Message.new :tool, %({"success": "#{tool_call.arguments["prompt"]}"})
+      req = Prompt::Request.new(tool_call.arguments["prompt"], 20)
+      tmp = request(req)
+
+      message.value.photo = File.open(tmp.path, "rb")
+      message.value.content = tool_call.arguments["prompt"]
+      tmp.delete
     end
   end
 end
