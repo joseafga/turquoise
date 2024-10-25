@@ -87,6 +87,31 @@ module Turquoise
         def initialize(@category, @threshold)
         end
       end
+
+      struct FunctionDeclaration
+        # Type contains the list of OpenAPI data types as defined by
+        # https://spec.openapis.org/oas/v3.0.3#data-types
+        enum Type
+          TYPE_UNSPECIFIED # Not specified, should not be used.
+          STRING           # String type.
+          NUMBER           # Number type.
+          INTEGER          # Integer type.
+          BOOLEAN          # Boolean type.
+          ARRAY            # Array type.
+          OBJECT           # Object type.
+        end
+      end
+
+      struct FunctionCallingConfig
+        # Defines the execution behavior for function calling by defining the execution mode.
+        # https://ai.google.dev/api/caching#Mode
+        enum Mode
+          MODE_UNSPECIFIED # Unspecified function calling mode. This value should not be used.
+          AUTO             # Default model behavior, model decides to predict either a function call or a natural language response.
+          ANY              # Model is constrained to always predicting a function call only. If "allowedFunctionNames" are set, the predicted function call will be limited to any one of "allowedFunctionNames", else the predicted function call will be any one of the provided "functionDeclarations".
+          NONE             # Model will not predict any function call. Model behavior is same as when not passing any function declarations.
+        end
+      end
     end
   end
 end
