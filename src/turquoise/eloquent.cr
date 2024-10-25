@@ -70,7 +70,7 @@ module Turquoise
         begin
           Chat::Result.from_json response.body
         rescue ex : JSON::SerializableError
-          error = Chat::Error.from_json response.body, root: "error"
+          error = Error.from_json response.body, root: "error"
           raise %(eloquent -- #{chat.id}: Error #{error.code} - "#{error.message}")
         end
       else

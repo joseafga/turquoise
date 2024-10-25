@@ -3,9 +3,10 @@ require "./types.cr"
 
 module Turquoise
   class Eloquent
+    # Google Gemini API
     module Chat
       # The base structured datatype containing multi-part content of a message.
-      # See: https://ai.google.dev/api/caching#Content
+      # https://ai.google.dev/api/caching#Content
       struct Content
         include JSON::Serializable
         # Optional. The producer of the content.
@@ -16,6 +17,11 @@ module Turquoise
         @[JSON::Field(ignore: true)]
         property photo : String | File | Nil
 
+        # Create using existing parts or new empty array
+        def initialize(@parts, @role = nil, @photo = nil)
+        end
+
+        # Create content with a text part already
         def initialize(text : String? = nil, @role = nil, @photo = nil)
           @parts << Part.new(text) unless text.nil?
         end
@@ -124,7 +130,7 @@ module Turquoise
 
         # Configuration options for model generation and outputs. Not all parameters
         # are configurable for every model.
-        # See: https://ai.google.dev/api/generate-content#generationconfig
+        # https://ai.google.dev/api/generate-content#generationconfig
         struct GenerationConfig
           include JSON::Serializable
           # Number of generated responses to return.
@@ -172,10 +178,10 @@ module Turquoise
           @[JSON::Field(key: "responseMimeType")]
           property response_mime_type : String?
 
-          # Specifies the format of the JSON requested if response_mime_type is
+          # TODO: Specifies the format of the JSON requested if response_mime_type is
           # `application/json`.
-          @[JSON::Field(key: "responseSchema")]
-          property response_schema : Nil # TODO
+          # @[JSON::Field(key: "responseSchema")]
+          # property response_schema : ResponseSchema
 
           def initialize(
             @stop_sequences = nil,
@@ -189,7 +195,7 @@ module Turquoise
       end
 
       # Response from the model supporting multiple candidate responses.
-      # See: https://ai.google.dev/api/generate-content#generatecontentresponse
+      # https://ai.google.dev/api/generate-content#generatecontentresponse
       # TODO: promptFeedback
       struct Result
         include JSON::Serializable
@@ -208,7 +214,7 @@ module Turquoise
         getter model_version : String?
 
         # A response candidate generated from the model.
-        # See: https://ai.google.dev/api/generate-content#candidate
+        # https://ai.google.dev/api/generate-content#candidate
         struct Candidate
           include JSON::Serializable
           # Output only. Generated content returned from the model.
@@ -242,7 +248,7 @@ module Turquoise
         end
 
         # A set of the feedback metadata the prompt specified in `Turquoise::Eloquent::Chat::Content`.
-        # See: https://ai.google.dev/api/generate-content#PromptFeedback
+        # https://ai.google.dev/api/generate-content#PromptFeedback
         struct PromptFeedback
           include JSON::Serializable
           # Optional. If set, the prompt was blocked and no candidates are returned.
@@ -255,7 +261,7 @@ module Turquoise
         end
 
         # Metadata on the generation request's token usage.
-        # See: https://ai.google.dev/api/generate-content#UsageMetadata
+        # https://ai.google.dev/api/generate-content#UsageMetadata
         struct UsageMetadata
           include JSON::Serializable
           # Number of tokens in the prompt. When cachedContent is set, this is still
@@ -275,6 +281,29 @@ module Turquoise
           # Total token count for the generation request (prompt + response candidates).
           @[JSON::Field(key: "totalTokenCount")]
           getter total_token_count : Int32
+        end
+      end
+
+      # Safety rating for a piece of content.
+      # https://ai.google.dev/api/generate-content#safetyrating
+      struct SafetyRating
+        include JSON::Serializable
+        getter category : HarmCategory
+        getter probability : HarmProbability
+        getter? blocked = false
+
+        def initialize(@category, @probability)
+        end
+      end
+
+      # Safety setting, affecting the safety-blocking behavior.
+      # https://ai.google.dev/api/generate-content#safetysetting
+      struct SafetySetting
+        include JSON::Serializable
+        getter category : HarmCategory
+        getter threshold : HarmBlockThreshold
+
+        def initialize(@category, @threshold)
         end
       end
 
@@ -394,14 +423,6 @@ module Turquoise
       end
     end
 
-    # Simplified error response
-    struct Error
-      include JSON::Serializable
-      getter code : Int32
-      getter message : String
-      getter status : String
-    end
-
     module Prompt
       struct Request
         include JSON::Serializable
@@ -415,6 +436,14 @@ module Turquoise
         def initialize(@prompt, @num_steps = nil)
         end
       end
+    end
+
+    # Simplified error response
+    struct Error
+      include JSON::Serializable
+      getter code : Int32
+      getter message : String
+      getter status : String
     end
   end
 end

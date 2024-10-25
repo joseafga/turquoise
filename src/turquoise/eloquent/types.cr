@@ -2,7 +2,7 @@ module Turquoise
   class Eloquent
     module Chat
       # Defines the reason why the model stopped generating tokens.
-      # See: https://ai.google.dev/api/generate-content#FinishReason
+      # https://ai.google.dev/api/generate-content#FinishReason
       enum FinishReason
         FINISH_REASON_UNSPECIFIED # Default value. This value is unused.
         STOP                      # Natural stop point of the model or provided stop sequence.
@@ -18,7 +18,7 @@ module Turquoise
       end
 
       # The category of a rating.
-      # See: https://ai.google.dev/api/generate-content#harmcategory
+      # https://ai.google.dev/api/generate-content#harmcategory
       enum HarmCategory
         HARM_CATEGORY_UNSPECIFIED       # Category is unspecified.
         HARM_CATEGORY_DEROGATORY        # PaLM - Negative or harmful comments targeting identity and/or protected attribute.
@@ -35,7 +35,7 @@ module Turquoise
       end
 
       # Block at and beyond a specified harm probability.
-      # See: https://ai.google.dev/api/generate-content#HarmBlockThreshold
+      # https://ai.google.dev/api/generate-content#HarmBlockThreshold
       enum HarmBlockThreshold
         HARM_BLOCK_THRESHOLD_UNSPECIFIED # Threshold is unspecified.
         BLOCK_LOW_AND_ABOVE              # Content with NEGLIGIBLE will be allowed.
@@ -46,7 +46,7 @@ module Turquoise
       end
 
       # The probability that a piece of content is harmful.
-      # See: https://ai.google.dev/api/generate-content#HarmProbability
+      # https://ai.google.dev/api/generate-content#HarmProbability
       enum HarmProbability
         HARM_PROBABILITY_UNSPECIFIED # Probability is unspecified.
         NEGLIGIBLE                   # Content has a negligible chance of being unsafe.
@@ -56,36 +56,13 @@ module Turquoise
       end
 
       # Specifies the reason why the prompt was blocked.
-      # See: https://ai.google.dev/api/generate-content#BlockReason
+      # https://ai.google.dev/api/generate-content#BlockReason
       enum BlockReason
         BLOCK_REASON_UNSPECIFIED # Default value. This value is unused.
         SAFETY                   # Prompt was blocked due to safety reasons. Inspect safetyRatings to understand which safety category blocked it.
         OTHER                    # Prompt was blocked due to unknown reasons.
         BLOCKLIST                # Prompt was blocked due to the terms which are included from the terminology blocklist.
         PROHIBITED_CONTENT       # Prompt was blocked due to prohibited content.
-      end
-
-      # Safety rating for a piece of content.
-      # See: https://ai.google.dev/api/generate-content#safetyrating
-      struct SafetyRating
-        include JSON::Serializable
-        getter category : HarmCategory
-        getter probability : HarmProbability
-        getter? blocked = false
-
-        def initialize(@category, @probability)
-        end
-      end
-
-      # Safety setting, affecting the safety-blocking behavior.
-      # See: https://ai.google.dev/api/generate-content#safetysetting
-      struct SafetySetting
-        include JSON::Serializable
-        getter category : HarmCategory
-        getter threshold : HarmBlockThreshold
-
-        def initialize(@category, @threshold)
-        end
       end
 
       struct FunctionDeclaration
