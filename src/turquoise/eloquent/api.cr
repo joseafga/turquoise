@@ -172,11 +172,11 @@ module Turquoise
       struct Result
         include JSON::Serializable
         # Candidate responses from the model.
-        property candidates : Array(Candidate)
+        getter candidates : Array(Candidate)
 
         # Returns the prompt's feedback related to the content filters.
         @[JSON::Field(key: "promptFeedback")]
-        property prompt_feedback : PromptFeedback?
+        getter prompt_feedback : PromptFeedback?
 
         # Output only. Metadata on the generation requests' token usage.
         @[JSON::Field(key: "usageMetadata")]
@@ -225,11 +225,11 @@ module Turquoise
           include JSON::Serializable
           # Optional. If set, the prompt was blocked and no candidates are returned.
           @[JSON::Field(key: "blockReason")]
-          property block_reason : BlockReason?
+          getter block_reason : BlockReason?
 
           # Ratings for safety of the prompt. There is at most one rating per category.
           @[JSON::Field(key: "safetyRatings")]
-          property safety_ratings : Array(SafetyRating)
+          getter safety_ratings : Array(SafetyRating)
         end
 
         # Metadata on the generation request's token usage.
@@ -259,9 +259,9 @@ module Turquoise
       # Simplified error response
       struct Error
         include JSON::Serializable
-        property code : Int32
-        property message : String
-        property status : String
+        getter code : Int32
+        getter message : String
+        getter status : String
       end
     end
 
