@@ -13,12 +13,12 @@ module Turquoise
       def perform
         eloquent = Eloquent.new(chat_id)
         act_as_group if eloquent.chat.type != "private"
-        message = eloquent.completion(text)
+        message = eloquent.generate(text)
         options = {chat_id: chat_id, reply_to_message_id: @reply_to_message_id}
+        return if message.nil? # no message to send
 
         if photo = message.photo
-          Bot.send_photo **options.merge({photo: photo, caption: message.escape_md})
-          return
+          return Bot.send_photo **options.merge({photo: photo, caption: message.escape_md})
         end
 
         Bot.send_message **options.merge({text: message.escape_md})
