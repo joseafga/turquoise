@@ -12,18 +12,23 @@ module Turquoise
         # Optional. The producer of the content.
         property role : Role?
         # Ordered Parts that constitute a single message. Parts may have different MIME types.
-        property parts = [] of Part
+        property parts : Array(Part)
         # Internal handle to send images using telegram API
         @[JSON::Field(ignore: true)]
         property photo : String | File | Nil
 
         # Create using existing parts or new empty array
-        def initialize(@parts, @role = nil, @photo = nil)
+        def initialize(@parts = [] of Part, @role = nil, @photo = nil)
+        end
+
+        # Create content with a single part
+        def initialize(part : Part, @role = nil, @photo = nil)
+          @parts = [part]
         end
 
         # Create content with a text part already
-        def initialize(text : String? = nil, @role = nil, @photo = nil)
-          @parts << Part.new(text) unless text.nil?
+        def initialize(text : String, @role = nil, @photo = nil)
+          initialize(Part.new(text), @role, @photo)
         end
 
         # Markdown special character escaping
@@ -45,6 +50,7 @@ module Turquoise
         enum Role
           User
           Model
+          Function
         end
       end
 
@@ -78,6 +84,10 @@ module Turquoise
         # property code_execution_result # Result of executing the ExecutableCode.
 
         def initialize(@text = nil, @function_call = nil, @function_response = nil)
+        end
+
+        def after_initialize
+          @text = @text.try &.chomp
         end
       end
 
@@ -320,7 +330,7 @@ module Turquoise
         # @[JSON::Field(key: "codeExecution")]
         # property code_execution : CodeExecution
 
-        def initialize
+        def initialize(@function_declarations = nil)
         end
       end
 
@@ -344,32 +354,51 @@ module Turquoise
         end
 
         # Reduced scheme
-        struct Schema
+        class Schema
           include JSON::Serializable
           # Required. Data type.
           property type : Type
+          # Optional. The format of the data.
+          # Supported formats:
+          # - `NUMBER` type: float, double
+          # - `INTEGER` type: int32, int64
+          # - `STRING` type: enum
+          property format : String?
           # Optional. A brief description of the parameter. This could contain
           # examples of use. Parameter description may be formatted as Markdown.
           property description : String?
-          # Optional. Properties of Type
-          property properties : Hash(String, Schema)?
-          # Optional. Required properties of Type
-          property required : Array(String)?
-
-          # TODO: format - string
-          # Optional. The format of the data. This is used only for primitive datatypes. Supported formats: for NUMBER type: float, double for INTEGER type: int32, int64 for STRING type: enum
-          # TODO: nullable - boolean
           # Optional. Indicates if the value may be null.
-          # TODO: enum[] - string
-          # Optional. Possible values of the element of Type.STRING with enum format. For example we can define an Enum Direction as : {type:STRING, format:enum, enum:["EAST", NORTH", "SOUTH", "WEST"]}
-          # TODO: maxItems - string (int64 format)
-          # Optional. Maximum number of the elements for Type.ARRAY.
-          # TODO: minItems - string (int64 format)
-          # Optional. Minimum number of the elements for Type.ARRAY.
-          # TODO: items - object (Schema)
-          # Optional. Schema of the elements of Type.ARRAY.
+          property nullable : Bool?
+          # Optional. Possible values of the element of `Type.STRING` with enum
+          # format. For example we can define an Enum Direction as : {type:STRING,
+          # format:enum, enum:["EAST", NORTH", "SOUTH", "WEST"]}
+          @[JSON::Field(key: "enum")]
+          property enumeration : Array(String)?
+          # Optional. Maximum number of the elements for `Type.ARRAY`
+          @[JSON::Field(key: "maxItems")]
+          property max_items : String?
+          # Optional. Minimum number of the elements for `Type.ARRAY`
+          @[JSON::Field(key: "minItems")]
+          property min_items : String?
+          # Optional. Properties of `Type`
+          property properties : Hash(String, Schema)?
+          # Optional. Required properties of `Type`
+          property required : Array(String)?
+          # Optional. Schema of the elements of `Type.ARRAY`.
+          property items : Schema?
 
-          def initialize(@type, @description = nil, @properties = nil, @required = nil)
+          def initialize(
+            @type,
+            @format = nil,
+            @description = nil,
+            @nullable = nil,
+            @enumeration = nil,
+            @max_items = nil,
+            @min_items = nil,
+            @properties = nil,
+            @required = nil,
+            @items = nil
+          )
           end
         end
       end
@@ -380,12 +409,9 @@ module Turquoise
       struct FunctionCall
         include JSON::Serializable
         # Required. The name of the function to call.
-        property name : String
+        getter name : String
         # Optional. The function parameters and values in JSON object format.
-        property args : JSON::Any?
-
-        def initialize(@name, @args = nil)
-        end
+        getter args : JSON::Any?
       end
 
       # This should contain the result of a `FunctionCall` made based on model
