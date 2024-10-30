@@ -2,7 +2,8 @@ module Turquoise
   class Eloquent
     module Chat
       # The category of a rating.
-      # https://ai.google.dev/api/generate-content#harmcategory
+      #
+      # See: https://ai.google.dev/api/generate-content#harmcategory
       enum HarmCategory
         HARM_CATEGORY_UNSPECIFIED       # Category is unspecified.
         HARM_CATEGORY_DEROGATORY        # PaLM - Negative or harmful comments targeting identity and/or protected attribute.
@@ -19,7 +20,8 @@ module Turquoise
       end
 
       # Block at and beyond a specified harm probability.
-      # https://ai.google.dev/api/generate-content#HarmBlockThreshold
+      #
+      # See: https://ai.google.dev/api/generate-content#HarmBlockThreshold
       enum HarmBlockThreshold
         HARM_BLOCK_THRESHOLD_UNSPECIFIED # Threshold is unspecified.
         BLOCK_LOW_AND_ABOVE              # Content with NEGLIGIBLE will be allowed.
@@ -30,7 +32,8 @@ module Turquoise
       end
 
       # The probability that a piece of content is harmful.
-      # https://ai.google.dev/api/generate-content#HarmProbability
+      #
+      # See: https://ai.google.dev/api/generate-content#HarmProbability
       enum HarmProbability
         HARM_PROBABILITY_UNSPECIFIED # Probability is unspecified.
         NEGLIGIBLE                   # Content has a negligible chance of being unsafe.
@@ -40,7 +43,8 @@ module Turquoise
       end
 
       # Specifies the reason why the prompt was blocked.
-      # https://ai.google.dev/api/generate-content#BlockReason
+      #
+      # See: https://ai.google.dev/api/generate-content#BlockReason
       enum BlockReason
         BLOCK_REASON_UNSPECIFIED # Default value. This value is unused.
         SAFETY                   # Prompt was blocked due to safety reasons. Inspect safetyRatings to understand which safety category blocked it.
@@ -50,7 +54,8 @@ module Turquoise
       end
 
       # Safety rating for a piece of content.
-      # https://ai.google.dev/api/generate-content#safetyrating
+      #
+      # See: https://ai.google.dev/api/generate-content#safetyrating
       struct SafetyRating
         include JSON::Serializable
         getter category : HarmCategory
@@ -62,7 +67,8 @@ module Turquoise
       end
 
       # Safety setting, affecting the safety-blocking behavior.
-      # https://ai.google.dev/api/generate-content#safetysetting
+      #
+      # See: https://ai.google.dev/api/generate-content#safetysetting
       struct SafetySetting
         include JSON::Serializable
         getter category : HarmCategory

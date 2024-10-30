@@ -1,5 +1,5 @@
 require "json"
-require "./eloquent/api"
+require "./eloquent/types"
 
 module Turquoise
   class Eloquent
