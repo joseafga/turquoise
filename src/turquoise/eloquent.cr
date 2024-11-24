@@ -52,11 +52,19 @@ module Turquoise
         Chat::SafetySetting.new(:HARM_CATEGORY_DANGEROUS_CONTENT, :BLOCK_NONE),
       ]
 
+      load
+    end
+
+    def load
       if messages = Redis.get("turquoise:eloquent:chat:#{chat.id}")
         @data.contents = @data.contents.class.from_json(messages)
       else
         clear
       end
+    end
+
+    def save!
+      Redis.set "turquoise:eloquent:chat:#{chat.id}", @data.contents.to_json
     end
 
     # Reset chat messages.
@@ -110,7 +118,6 @@ module Turquoise
       function_calling_handler pointerof(message)
 
       @data << message
-      Redis.set "turquoise:eloquent:chat:#{chat.id}", @data.contents.to_json
       message
     end
 

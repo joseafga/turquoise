@@ -2,6 +2,7 @@ module Turquoise
   module Jobs
     class SendChatCompletion < Mosquito::QueuedJob
       include Mosquito::RateLimiter
+      @eloquent : Eloquent?
       @reply_to_message_id : Int64? = nil
 
       param chat_id : Int64
@@ -11,33 +12,39 @@ module Turquoise
       throttle limit: 6, per: 1.minute
 
       def perform
-        eloquent = Eloquent.new(chat_id)
+        @eloquent = Eloquent.new(chat_id)
 
-        act_as_group if eloquent.chat.type != "private"
-        content = eloquent.generate(text)
-        options = {chat_id: chat_id, reply_to_message_id: @reply_to_message_id}
+        if eloquent = @eloquent
+          act_as_group if eloquent.chat.type != "private"
+          content = eloquent.generate(text)
+          options = {chat_id: chat_id, reply_to_message_id: @reply_to_message_id}
 
-        return if content.nil? # no message to send
-        text = content.escape_md
+          return if content.nil? # no message to send
+          text = content.escape_md
 
-        if eloquent.media.present?
-          # Merge response as caption if caption no exists
-          unless eloquent.media_captions?
-            eloquent.media.first.caption = text
-            text = ""
-          end
-
-          if eloquent.media.size == 1
-            File.open(eloquent.media.first.media) do |file|
-              Bot.send_photo **options.merge({photo: file, caption: eloquent.media.first.caption})
+          if eloquent.media.present?
+            # Merge response as caption if caption no exists
+            unless eloquent.media_captions?
+              eloquent.media.first.caption = text
+              text = ""
             end
-          elsif eloquent.media.size > 1
-            Bot.send_media_group **options.merge({media: eloquent.media})
-          end
-        end
 
-        return if text.empty?
-        Bot.send_message **options.merge({text: text})
+            if eloquent.media.size == 1
+              File.open(eloquent.media.first.media) do |file|
+                Bot.send_photo **options.merge({photo: file, caption: eloquent.media.first.caption})
+              end
+            elsif eloquent.media.size > 1
+              Bot.send_media_group **options.merge({media: eloquent.media})
+            end
+          end
+
+          return if text.empty?
+          Bot.send_message **options.merge({text: text})
+        end
+      end
+
+      after do
+        @eloquent.try(&.save!) if succeeded?
       end
 
       def reschedule_interval(retry_count)
