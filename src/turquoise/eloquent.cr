@@ -3,18 +3,42 @@ require "./eloquent/types"
 
 module Turquoise
   class Eloquent
-    MODEL        = "gemini-1.5-flash-latest"
+    MODEL        = "gemini-1.5-flash"
     ENDPOINT     = "https://generativelanguage.googleapis.com/v1beta/models/#{MODEL}:generateContent"
-    MAX_MESSAGES =   6
+    MAX_MESSAGES =  10
     MAX_TOKENS   = 128
     HEADERS      = HTTP::Headers{"Content-Type" => "application/json"}
+    # setup function calling
+    TOOL = Chat::Tool.new [
+      Chat::FunctionDeclaration.new(
+        "send_selfie_image",
+        description: "Send a selfie. Call this when you need to send a photo of yourself."
+      ),
+      Chat::FunctionDeclaration.new(
+        "send_custom_image",
+        description: "Send an image using AI. Call this when you need to create a custom image, for example when they ask for 'Create an image of a dog'.",
+        parameters: Chat::FunctionDeclaration::Schema.new(
+          type: :OBJECT,
+          properties: {
+            "prompt" => Chat::FunctionDeclaration::Schema.new(
+              type: :STRING,
+              description: "Description of what you want to create.",
+            ),
+          },
+          required: ["prompt"],
+        )
+      ),
+    ]
 
     getter chat : Models::Chat
     getter data : Chat::Request
+    # Send media using telegram API
+    getter media = [] of Tourmaline::InputMediaPhoto
 
     def initialize(chat_id)
       @chat = Models::Chat.find!(chat_id)
       @data = Chat::Request.new Chat::Content.new(system_role)
+      @data.tools = [TOOL]
 
       @data.generation_config = Chat::Request::GenerationConfig.new(
         max_output_tokens: MAX_TOKENS
@@ -28,27 +52,7 @@ module Turquoise
         Chat::SafetySetting.new(:HARM_CATEGORY_DANGEROUS_CONTENT, :BLOCK_NONE),
       ]
 
-      # # setup function calling
-      # @data.tools << Chat::Tool.new(
-      #   name: "send_selfie_image",
-      #   description: "Send a selfie. Call this when you need to send a photo of yourself."
-      # )
-
-      # @data.tools << Chat::Tool.new(
-      #   name: "send_custom_image",
-      #   description: "Send an image using AI. Call this when you need to create a custom image, for example when they ask for 'Create an image of a dog'.",
-      #   parameters: {
-      #     type:       "object",
-      #     properties: {
-      #       "prompt" => {
-      #         type:        "string",
-      #         description: "Description of what you want to create.",
-      #       },
-      #     },
-      #     required: ["prompt"],
-      #   })
-
-      if messages = Redis.get("turquoise:eloquent:chat:#{@chat.id}")
+      if messages = Redis.get("turquoise:eloquent:chat:#{chat.id}")
         @data.contents = @data.contents.class.from_json(messages)
       else
         clear
@@ -95,30 +99,83 @@ module Turquoise
     def generate(text : String) : Chat::Content?
       @data << Chat::Content.new text, :user
       res = request(@data)
-
       candidate = res.candidates.first
-      unless candidate.content
+
+      if candidate.content.nil?
         Log.warn { %(eloquent -- #{chat.id}: Finished by `#{candidate.finish_reason}` -> "#{text}") }
         return
       end
-      message = Chat::Content.new candidate.content.to_s.chomp, :model
 
-      # Execute function calling
-      # res.result[:tool_calls].try &.each do |tool_call|
-      #   case tool_call.name
-      #   when "send_selfie_image"
-      #     send_selfie_image tool_call, pointerof(message)
-      #   when "send_custom_image"
-      #     send_custom_image tool_call, pointerof(message)
-      #   else
-      #     # TODO: Undefined tool call
-      #     message.content = "TODO: #{tool_call}"
-      #   end
-      # end
+      message = Chat::Content.new candidate.content!.parts, :model
+      function_calling_handler pointerof(message)
 
       @data << message
       Redis.set "turquoise:eloquent:chat:#{chat.id}", @data.contents.to_json
       message
+    end
+
+    def function_calling_handler(message : Chat::Content*)
+      function_parts = [] of Chat::Part
+
+      # Execute function calling
+      message.value.parts.each &.function_call? do |func_call|
+        return unless func_call.is_a?(Chat::FunctionCall)
+        case func_call.name
+        when "send_selfie_image"
+          function_parts << send_selfie_image(func_call)
+        when "send_custom_image"
+          function_parts << send_custom_image(func_call)
+        else
+          # TODO: Undefined tool call
+          function_parts << Chat::Part.new("TODO: #{func_call}")
+        end
+      end
+
+      # Handle function calling `Parts` result
+      if function_parts.present?
+        @data << message.value
+        @data << Chat::Content.new function_parts, :function
+
+        res = request(@data)
+        # Message will receive text part of function calling response
+        message.value.parts = [Chat::Part.new(res.candidates.first.content.to_s)]
+      end
+    end
+
+    def send_selfie_image(func_call : Chat::FunctionCall) : Chat::Part
+      selfie_path = random_selfie
+      description = File.basename(selfie_path, ".jpg")
+      media << Tourmaline::InputMediaPhoto.new(media: selfie_path)
+
+      Chat::Part.new(
+        Chat::FunctionResponse.new(
+          func_call.name,
+          JSON.parse(%({"image": { "description": "#{description}."}}))
+        )
+      )
+    end
+
+    def random_selfie : String
+      dir = File.expand_path("../../img/pictures/", __DIR__)
+      Dir.glob(File.join(dir, "/*.jpg")).sample
+    end
+
+    def send_custom_image(func_call : Chat::FunctionCall) : Chat::Part
+      # TODO: New method for image generation
+      # req = Prompt::Request.new(tool_call.args["prompt"], 20)
+      # tmp = request(req)
+      # media << Tourmaline::InputMediaPhoto.new(
+      #   media: tmp.path,
+      #   caption: %("#{func_call.args.try &.["prompt"]}")
+      # )
+
+      Chat::Part.new(
+        Chat::FunctionResponse.new(
+          func_call.name,
+          JSON.parse(%({"image": { "description": "#{func_call.args.try &.["prompt"]}."}}))
+          # JSON.parse(%({"status": "success"}))
+        )
+      )
     end
 
     # TODO: internationalization
@@ -130,32 +187,9 @@ module Turquoise
       end
     end
 
-    def send_selfie_image(tool_call : Chat::Tool::Call, message : Chat::Content*)
-      file = random_selfie
-      description = File.basename(file.path, ".jpg")
-
-      # Store some image information to IA generate response based on this
-      @data << Chat::Content.new %({"image_description": "#{description}."}), :tool
-      res = request(@data)
-      message.value.content = res.result[:response].to_s
-      message.value.photo = file
+    # Check if `#media` has captions
+    def media_captions? : Bool
+      !!media.bsearch(&.caption)
     end
-
-    def random_selfie
-      dir = File.expand_path("../../img/pictures/", __DIR__)
-      image = Dir.glob(File.join(dir, "/*.jpg")).sample
-
-      File.open(image, "rb")
-    end
-
-    # def send_custom_image(tool_call : Chat::Tool::Call, message : Chat::Content*)
-    #   data << Chat::Content.new %({"success": "#{tool_call.arguments["prompt"]}"}), :tool
-    #   req = Prompt::Request.new(tool_call.arguments["prompt"], 20)
-    #   tmp = request(req)
-
-    #   message.value.photo = File.open(tmp.path, "rb")
-    #   message.value.content = tool_call.arguments["prompt"]
-    #   tmp.delete
-    # end
   end
 end
