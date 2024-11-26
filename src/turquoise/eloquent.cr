@@ -1,4 +1,5 @@
 require "json"
+require "mime/media_type"
 require "./eloquent/types"
 
 module Turquoise
@@ -76,8 +77,9 @@ module Turquoise
     private def request(body : Chat::Request) : Chat::Result
       Log.debug { "eloquent -- #{chat.id}: #{body.to_pretty_json}" }
       response = HTTP::Client.post "#{ENDPOINT}?key=#{ENV["ELOQUENT_API_KEY"]}", body: body.to_json, headers: HEADERS
+      content_type = MIME::MediaType.parse(response.headers["Content-Type"])
 
-      case response.headers["Content-Type"][/[^;]+/]
+      case content_type.media_type
       when "application/json"
         begin
           Chat::Result.from_json response.body
