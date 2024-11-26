@@ -1,10 +1,28 @@
 module Turquoise
   module Commands
+    extend self
+    APPROACH = ["sedutora", "atrevida", "engraçada", "formal", "entusiasta da cultura japonesa"]
+
+    def message_to_eloquent(text, message)
+      return if text.empty?
+
+      if message.chat.type == "private"
+        message_id = 0_i64
+      else
+        message_id = message.message_id.to_i64
+        text = "#{(message.from.try &.first_name).to_s} say: #{text}"
+      end
+
+      Helpers.persist_chat(message.chat)
+      Helpers.persist_user(message.users)
+      Bot.send_chat_action(chat_id: message.chat.id, action: "typing")
+      Jobs::SendChatCompletion.new(chat_id: message.chat.id.to_i64, message_id: message_id, text: text).enqueue
+    end
+
     # TODO: internationalization
     # Eloquent message when someone enter in the group.
     Bot.on :new_chat_members do |ctx|
       if message = ctx.message
-        theme = ["sedutora", "atrevida", "engraçada", "formal", "entusiasta da cultura japonesa"].sample
         members = message.new_chat_members.join(", ") do |user|
           user.first_name
         end
@@ -15,64 +33,36 @@ module Turquoise
         end
 
         if yourself
-          text = "Crie uma frase curta se apresentando para um grupo que você acabou de chegar, seja #{theme}."
+          text = "Crie uma frase curta se apresentando para um grupo que você acabou de chegar, seja #{APPROACH.sample}."
         else # New member in the group
-          text = "Crie uma frase curta de boas-vindas para #{members}, que acabou de entrar no grupo, seja #{theme}."
+          text = "Crie uma frase curta de boas-vindas para #{members}, que acabou de entrar no grupo, seja #{APPROACH.sample}."
         end
 
         Helpers.persist_chat(message.chat)
         ctx.send_chat_action(:typing)
-        Jobs::SendChatCompletion.new(
-          chat_id: message.chat.id.to_i64,
-          message_id: 0_i64,
-          text: text,
-        ).enqueue
+        Jobs::SendChatCompletion.new(chat_id: message.chat.id.to_i64, message_id: 0_i64, text: text).enqueue
       end
     end
 
-    # Use eloquent to chat in private or group without commands
+    # Use eloquent to chat in private or group when reply
     Bot.on :text do |ctx|
       if message = ctx.message
-        next unless message.text_entities("bot_command").to_a.empty?
-
-        if text = message.text
-          next if text.empty?
-
-          Helpers.persist_chat(message.chat)
-          Helpers.persist_user(message.users)
-          ctx.send_chat_action(:typing)
-          Jobs::SendChatCompletion.new(
-            chat_id: message.chat.id.to_i64,
-            message_id: message.message_id.to_i64,
-            text: text,
-            from_name: (message.from.try &.first_name).to_s
-          ).enqueue
-        end
+        next if message.text_entities("bot_command").to_a.present?
+        message_to_eloquent(message.text.to_s, message)
       end
     end
 
+    # Use eloquent to chat in private or group with `/chat` command
     chat = Tourmaline::CommandHandler.new("chat") do |ctx|
       if message = ctx.message
-        text = ctx.text.to_s
-        next if text.empty?
-
-        Helpers.persist_chat(message.chat)
-        Helpers.persist_user(message.users)
-        ctx.send_chat_action(:typing)
-        Jobs::SendChatCompletion.new(
-          chat_id: message.chat.id.to_i64,
-          message_id: message.message_id.to_i64,
-          text: text,
-          from_name: (message.from.try &.first_name).to_s
-        ).enqueue
+        message_to_eloquent(ctx.text.to_s, message)
       end
     end
 
     clear = Tourmaline::CommandHandler.new(["clear", "limpar"]) do |ctx|
       if message = ctx.message
-        Jobs::ResetChatCompletion.new(
-          chat_id: message.chat.id.to_i64
-        ).enqueue
+        ctx.send_chat_action(:typing)
+        Jobs::ResetChatCompletion.new(chat_id: message.chat.id.to_i64).enqueue
       end
     end
 

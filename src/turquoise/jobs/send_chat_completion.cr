@@ -3,21 +3,18 @@ module Turquoise
     class SendChatCompletion < Mosquito::QueuedJob
       include Mosquito::RateLimiter
       @eloquent : Eloquent?
-      @reply_to_message_id : Int64? = nil
 
       param chat_id : Int64
       param text : String
       param message_id : Int64
-      param from_name : String = ""
       throttle limit: 6, per: 1.minute
 
       def perform
         @eloquent = Eloquent.new(chat_id)
 
         if eloquent = @eloquent
-          act_as_group if eloquent.chat.type != "private"
           content = eloquent.generate(text)
-          options = {chat_id: chat_id, reply_to_message_id: @reply_to_message_id}
+          options = {chat_id: chat_id, reply_to_message_id: message_id_or_nil}
 
           return if content.nil? # no message to send
           text = content.escape_md
@@ -51,12 +48,8 @@ module Turquoise
         30.seconds * retry_count
       end
 
-      # Add more information when in group chats
-      def act_as_group
-        return if text.empty? || from_name.empty?
-
-        @text = "#{from_name} say: #{text}"
-        @reply_to_message_id = message_id
+      def message_id_or_nil : Int64?
+        message_id.zero? ? nil : message_id
       end
     end
   end
