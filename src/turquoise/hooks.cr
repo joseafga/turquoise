@@ -18,8 +18,8 @@ module Turquoise
     raise "Inactive subscription (#{subscriber.topic})." unless subscriber.to_subscription.active?
     entry = PubSubHubbub::Feed.parse(xml).entries.first
 
-    # When uploading or updating a video, the notification is equal, a workaround to
-    # identify it was store the video id in redis and compare it with the notification.
+    # When uploading or updating a video, the notification is equal, a workaround to identify it was store the video id
+    # in redis and compare it with the notification.
     found = Redis.sismember("turquoise:subscription:history", entry.id.not_nil!).as(Int64)
     next unless found.zero?
     Redis.sadd "turquoise:subscription:history", entry.id.not_nil!

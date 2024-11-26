@@ -61,7 +61,7 @@ module Turquoise
         server.listen
       end
     end
-    
+
     def send_welcome
       Bot.send_message welcome_chat, text: welcome_message
     end

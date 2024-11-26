@@ -6,12 +6,12 @@ module Turquoise
       # See: https://ai.google.dev/api/generate-content#harmcategory
       enum HarmCategory
         HARM_CATEGORY_UNSPECIFIED       # Category is unspecified.
-        HARM_CATEGORY_DEROGATORY        # PaLM - Negative or harmful comments targeting identity and/or protected attribute.
+        HARM_CATEGORY_DEROGATORY        # PaLM - Negative or harmful comments targeting identity and/or protected attr.
         HARM_CATEGORY_TOXICITY          # PaLM - Content that is rude, disrespectful, or profane.
-        HARM_CATEGORY_VIOLENCE          # PaLM - Describes scenarios depicting violence against an individual or group, or general descriptions of gore.
+        HARM_CATEGORY_VIOLENCE          # PaLM - Describes scenarios depicting violence against an individual or group.
         HARM_CATEGORY_SEXUAL            # PaLM - Contains references to sexual acts or other lewd content.
         HARM_CATEGORY_MEDICAL           # PaLM - Promotes unchecked medical advice.
-        HARM_CATEGORY_DANGEROUS         # PaLM - Dangerous content that promotes, facilitates, or encourages harmful acts.
+        HARM_CATEGORY_DANGEROUS         # PaLM - Promotes, facilitates or encourages harmful acts.
         HARM_CATEGORY_HARASSMENT        # Gemini - Harassment content.
         HARM_CATEGORY_HATE_SPEECH       # Gemini - Hate speech and content.
         HARM_CATEGORY_SEXUALLY_EXPLICIT # Gemini - Sexually explicit content.
@@ -47,9 +47,9 @@ module Turquoise
       # See: https://ai.google.dev/api/generate-content#BlockReason
       enum BlockReason
         BLOCK_REASON_UNSPECIFIED # Default value. This value is unused.
-        SAFETY                   # Prompt was blocked due to safety reasons. Inspect safetyRatings to understand which safety category blocked it.
+        SAFETY                   # Prompt was blocked due to safety reasons.
         OTHER                    # Prompt was blocked due to unknown reasons.
-        BLOCKLIST                # Prompt was blocked due to the terms which are included from the terminology blocklist.
+        BLOCKLIST                # Prompt was blocked due to the terms which are included from the blocklist.
         PROHIBITED_CONTENT       # Prompt was blocked due to prohibited content.
       end
 
