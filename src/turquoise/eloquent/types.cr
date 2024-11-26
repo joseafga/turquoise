@@ -453,13 +453,15 @@ module Turquoise
 
             # if `#data` type is `{{ type.id }}` will return value, or nil if not
             def {{field.id}}?
-              data if data.is_a?({{type.id}})
+              data.as({{type.id}}) if data.is_a?({{type.id}})
             end
 
             # Do not yield if `#data` is a diferent type
             def {{field.id}}?(&)
-              return unless {{field.id}}?
-              yield data.as({{type.id}})
+              value = {{field.id}}?
+
+              return if value.nil?
+              yield value
             end
 
             # Same as `#{{ field.id }}?` but raise error if nil
@@ -529,6 +531,13 @@ module Turquoise
         # Create content with a text part already
         def initialize(text : String, @role = nil)
           initialize(Part.new(text), @role)
+        end
+
+        # Remove empty texts `Part` from JSON to fix: "Unable to submit request because it has an empty text parameter."
+        def after_initialize
+          @parts.select! do |part|
+            !(part.text? && part.text? &.empty?)
+          end
         end
 
         # Markdown special character escaping
