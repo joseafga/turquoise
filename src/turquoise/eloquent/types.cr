@@ -102,8 +102,8 @@ module Turquoise
           property response_mime_type : String?
 
           # Specifies the format of the JSON requested if response_mime_type is `application/json`.
-          # @[JSON::Field(key: "responseSchema")]
-          # TODO: property response_schema : Schema?
+          @[JSON::Field(key: "responseSchema")]
+          property response_schema : Schema?
 
           # Presence penalty applied to the next token's logprobs if the token has already been seen in the response.
           # _(Optional)_
@@ -113,7 +113,8 @@ module Turquoise
           # the vocabulary.
           # A negative penalty will encourage the use of tokens that have already been used in the response, decreasing
           # the vocabulary.
-          # TODO: presencePenalty number
+          @[JSON::Field(key: "presencePenalty")]
+          property presence_penalty : Float64?
 
           # Frequency penalty applied to the next token's logprobs, multiplied by the number of times each token has
           # been seen in the response so far. _(Optional)_
@@ -125,21 +126,31 @@ module Turquoise
           # token has been used. Small negative values will reduce the vocabulary of a response. Larger negative values
           # will cause the model to start repeating a common token until it hits the maxOutputTokens limit: "...the the
           # the the the...".
-          # TODO: frequencyPenalty number
+          @[JSON::Field(key: "frequencyPenalty")]
+          property frequency_penalty : Float64?
 
           # If `true`, export the logprobs results in response. _(Optional)_
-          # TODO: responseLogprobs boolean
+          @[JSON::Field(key: "responseLogprobs")]
+          property response_logprobs : Bool?
 
           # Only valid if `#responseLogprobs` is `true`. This sets the number of top logprobs to return at each decoding
           # step in the `Candidate#logprobs_result`. _(Optional)_
-          # TODO: logprobs integer
+          @[JSON::Field(key: "logprobs")]
+          property logprobs : Int32?
 
           def initialize(
+            @candidate_count = nil,
             @stop_sequences = nil,
             @temperature = nil,
             @max_output_tokens = nil,
             @top_k = nil,
-            @top_p = nil
+            @top_p = nil,
+            @response_mime_type = nil,
+            @response_schema = nil,
+            @presence_penalty = nil,
+            @frequency_penalty = nil,
+            @response_logprobs = nil,
+            @logprobs = nil
           )
           end
         end
@@ -279,76 +290,6 @@ module Turquoise
         def initialize(@name, @description, parameters : NamedTuple)
           @parameters = Schema.new(**parameters)
         end
-
-        # Reduced scheme
-        class Schema
-          include JSON::Serializable
-          # Data type. _(Required)_
-          property type : Type
-          # The format of the data. _(Optional)_
-          # Supported formats:
-          # * __NUMBER__: float, double
-          # * __INTEGER__: int32, int64
-          # * __STRING__: enum
-          property format : String?
-          # A brief description of the parameter. This could contain examples of use. Parameter description may be
-          # formatted as Markdown. _(Optional)_
-          property description : String?
-          # Indicates if the value may be null. _(Optional)_
-          property nullable : Bool?
-          # Possible values of the element of `Type::STRING` with enum format. For example we can define an Enum
-          # Direction as:
-          #
-          # ```
-          # {
-          #   type: STRING,
-          #   format: enum,
-          #   enum: ["EAST", NORTH", "SOUTH", "WEST"]
-          # }
-          # ```
-          # _(Optional)_
-          @[JSON::Field(key: "enum")]
-          property enumeration : Array(String)?
-          # Maximum number of the elements for `Type::ARRAY`. _(Optional)_
-          @[JSON::Field(key: "maxItems")]
-          property max_items : String?
-          # Minimum number of the elements for `Type::ARRAY`. _(Optional)_
-          @[JSON::Field(key: "minItems")]
-          property min_items : String?
-          # Properties of `Type`. _(Optional)_
-          property properties : Hash(String, Schema)?
-          # Required properties of `Type`. _(Optional)_
-          property required : Array(String)?
-          # Schema of the elements of `Type::ARRAY`. _(Optional)_
-          property items : Schema?
-
-          def initialize(
-            @type,
-            @format = nil,
-            @description = nil,
-            @nullable = nil,
-            @enumeration = nil,
-            @max_items = nil,
-            @min_items = nil,
-            @properties = nil,
-            @required = nil,
-            @items = nil
-          )
-          end
-        end
-
-        # Type contains the list of OpenAPI data types as defined by
-        #
-        # See: https://spec.openapis.org/oas/v3.0.3#data-types
-        enum Type
-          TYPE_UNSPECIFIED # Not specified, should not be used.
-          STRING           # String type.
-          NUMBER           # Number type.
-          INTEGER          # Integer type.
-          BOOLEAN          # Boolean type.
-          ARRAY            # Array type.
-          OBJECT           # Object type.
-        end
       end
 
       # A predicted `FunctionCall` returned from the model that contains a string representing the
@@ -384,9 +325,6 @@ module Turquoise
         end
       end
 
-      # `Part` inline text data type
-      alias Text = String
-
       # The Tool configuration containing parameters for specifying Tool use in the request.
       #
       # See: https://ai.google.dev/api/caching#ToolConfig
@@ -417,6 +355,77 @@ module Turquoise
         end
       end
 
+      # The Schema object allows the definition of input and output data types. These types can be objects, but also
+      # primitives and arrays. Represents a select subset of an OpenAPI 3.0 schema object.
+      #
+      # See: https://ai.google.dev/api/caching#Schema
+      class Schema
+        include JSON::Serializable
+        # Data type. _(Required)_
+        property type : Type
+        # The format of the data. _(Optional)_
+        # Supported formats:
+        # * __NUMBER__: float, double
+        # * __INTEGER__: int32, int64
+        # * __STRING__: enum
+        property format : String?
+        # A brief description of the parameter. This could contain examples of use. Parameter description may be
+        # formatted as Markdown. _(Optional)_
+        property description : String?
+        # Indicates if the value may be null. _(Optional)_
+        property nullable : Bool?
+        # Possible values of the element of `Type::STRING` with enum format. For example we can define an Enum
+        # Direction as:
+        #
+        # ```
+        # {
+        #   type: STRING,
+        #   format: enum,
+        #   enum: ["EAST", NORTH", "SOUTH", "WEST"]
+        # }
+        # ```
+        # _(Optional)_
+        @[JSON::Field(key: "enum")]
+        property enumeration : Array(String)?
+        # Maximum number of the elements for `Type::ARRAY`. _(Optional)_
+        @[JSON::Field(key: "maxItems")]
+        property max_items : String?
+        # Minimum number of the elements for `Type::ARRAY`. _(Optional)_
+        @[JSON::Field(key: "minItems")]
+        property min_items : String?
+        # Properties of `Type`. _(Optional)_
+        property properties : Hash(String, Schema)?
+        # Required properties of `Type`. _(Optional)_
+        property required : Array(String)?
+        # Schema of the elements of `Type::ARRAY`. _(Optional)_
+        property items : Schema?
+
+        def initialize(
+          @type,
+          @format = nil,
+          @description = nil,
+          @nullable = nil,
+          @enumeration = nil,
+          @max_items = nil,
+          @min_items = nil,
+          @properties = nil,
+          @required = nil,
+          @items = nil
+        )
+        end
+
+        # Type contains the list of OpenAPI data types as defined by https://spec.openapis.org/oas/v3.0.3#data-types
+        enum Type
+          TYPE_UNSPECIFIED # Not specified, should not be used.
+          STRING           # String type.
+          NUMBER           # Number type.
+          INTEGER          # Integer type.
+          BOOLEAN          # Boolean type.
+          ARRAY            # Array type.
+          OBJECT           # Object type.
+        end
+      end
+
       # Defines the reason why the model stopped generating tokens.
       #
       # See: https://ai.google.dev/api/generate-content#FinishReason
@@ -433,6 +442,9 @@ module Turquoise
         SPII                      # Token generation stopped because the content potentially contains SPII.
         MALFORMED_FUNCTION_CALL   # The function call generated by the model is invalid.
       end
+
+      # `Part` inline text data type
+      alias Text = String
 
       # A datatype containing media that is part of a multi-part `Content` message.
       #

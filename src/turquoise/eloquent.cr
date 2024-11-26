@@ -18,10 +18,10 @@ module Turquoise
       Chat::FunctionDeclaration.new(
         "send_custom_image",
         description: "Send an image using AI. Call this when you need to create a custom image, for example when they ask for 'Create an image of a dog'.",
-        parameters: Chat::FunctionDeclaration::Schema.new(
+        parameters: Chat::Schema.new(
           type: :OBJECT,
           properties: {
-            "prompt" => Chat::FunctionDeclaration::Schema.new(
+            "prompt" => Chat::Schema.new(
               type: :STRING,
               description: "Description of what you want to create.",
             ),
