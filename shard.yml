@@ -28,7 +28,7 @@ dependencies:
     github: jgaskins/redis
   mosquito:
     github: mosquito-cr/mosquito
-    branch: master
+    commit: 0d77226
 
 development_dependencies:
   micrate:
@@ -36,7 +36,6 @@ development_dependencies:
     branch: master
   ameba:
     github: crystal-ameba/ameba
-    version: ~> 1.5.0
 
 crystal: 1.8.2
 
