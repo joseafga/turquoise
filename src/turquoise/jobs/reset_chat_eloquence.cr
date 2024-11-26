@@ -1,6 +1,6 @@
 module Turquoise
   module Jobs
-    class ResetChatCompletion < Mosquito::QueuedJob
+    class ResetChatEloquence < Mosquito::QueuedJob
       param chat_id : Int64
 
       def perform

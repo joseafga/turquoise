@@ -1,6 +1,6 @@
 module Turquoise
   module Jobs
-    class SendChatCompletion < Mosquito::QueuedJob
+    class SendChatEloquence < Mosquito::QueuedJob
       include Mosquito::RateLimiter
       @eloquent : Eloquent?
 
