@@ -2,6 +2,7 @@ require "log"
 require "dotenv"
 require "tourmaline"
 require "pubsubhubbub"
+require "gemini"
 require "pg"
 require "redis"
 require "mosquito"
@@ -15,6 +16,7 @@ Log.setup do |c|
   c.bind "tourmaline.*", :info, backend
   c.bind "mosquito.*", :info, backend
   c.bind "pubsubhubbub", :debug, backend
+  c.bind "gemini", :debug, backend
   c.bind "turquoise.*", :debug, backend
 end
 
@@ -38,6 +40,10 @@ module Turquoise
   PubSubHubbub.configure do |settings|
     settings.callback = File.join(ENV["HOST_URL"], ENV["YT_WEBHOOK_PATH"])
     settings.useragent = USERAGENT
+  end
+
+  Gemini.configure do |settings|
+    settings.api_key = ENV["ELOQUENT_API_KEY"]
   end
 
   Mosquito.configure do |settings|

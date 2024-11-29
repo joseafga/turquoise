@@ -19,6 +19,8 @@ dependencies:
   pubsubhubbub:
     github: joseafga/pubsubhubbub.cr
     branch: main
+  gemini:
+    github: joseafga/gemini.cr
   pg:
     github: will/crystal-pg
   granite:

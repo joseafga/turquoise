@@ -13,11 +13,11 @@ module Turquoise
         @eloquent = Eloquent.new(chat_id)
 
         if eloquent = @eloquent
-          content = eloquent.generate(text)
+          response = eloquent.generate(text)
           options = {chat_id: chat_id, reply_to_message_id: message_id_or_nil}
 
-          return if content.nil? # no message to send
-          text = content.escape_md
+          return if response.nil? # no message to send
+          text = Helpers.escape_md(response.text)
 
           if eloquent.media.present?
             # Merge response as caption if caption no exists

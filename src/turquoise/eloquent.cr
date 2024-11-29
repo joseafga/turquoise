@@ -1,95 +1,77 @@
-require "json"
-require "mime/media_type"
-require "./eloquent/types"
-
 module Turquoise
   class Eloquent
-    MODEL        = "gemini-1.5-flash"
-    ENDPOINT     = "https://generativelanguage.googleapis.com/v1beta/models/#{MODEL}:generateContent"
-    MAX_MESSAGES =  10
-    MAX_TOKENS   = 128
-    HEADERS      = HTTP::Headers{"Content-Type" => "application/json"}
-    # setup function calling
-    TOOL = Chat::Tool.new [
-      Chat::FunctionDeclaration.new(
-        "send_selfie_image",
-        description: "Send a selfie. Call this when you need to send a photo of yourself."
+    MAX_MESSAGES = 10
+    MODEL_CONFIG = {
+      model_name:        ENV["ELOQUENT_MODEL"],
+      generation_config: Gemini::GenerationConfig.new(
+        max_output_tokens: 128
       ),
-      Chat::FunctionDeclaration.new(
-        "send_custom_image",
-        description: "Send an image using AI. Call this when you need to create a custom image, for example when they ask for 'Create an image of a dog'.",
-        parameters: Chat::Schema.new(
-          type: :OBJECT,
-          properties: {
-            "prompt" => Chat::Schema.new(
-              type: :STRING,
-              description: "Description of what you want to create.",
-            ),
-          },
-          required: ["prompt"],
-        )
-      ),
-    ]
+      # More testing needed but default seems to be very strict
+      safety_settings: [
+        Gemini::SafetySetting.new(:HARM_CATEGORY_SEXUALLY_EXPLICIT, :BLOCK_NONE),
+        Gemini::SafetySetting.new(:HARM_CATEGORY_HATE_SPEECH, :BLOCK_NONE),
+        Gemini::SafetySetting.new(:HARM_CATEGORY_HARASSMENT, :BLOCK_NONE),
+        Gemini::SafetySetting.new(:HARM_CATEGORY_DANGEROUS_CONTENT, :BLOCK_NONE),
+      ],
+      # setup function calling
+      tools: [Gemini::Tool.new([
+        Gemini::FunctionDeclaration.new(
+          "send_selfie_image",
+          description: "Send a selfie. Call this when you need to send a photo of yourself."
+        ),
+        Gemini::FunctionDeclaration.new(
+          "send_custom_image",
+          description: "Send an image using AI. Call this when you need to create a custom image, for example when they ask for 'Create an image of a dog'.",
+          parameters: Gemini::Schema.new(
+            type: :OBJECT,
+            properties: {
+              "prompt" => Gemini::Schema.new(
+                type: :STRING,
+                description: "Description of what you want to create.",
+              ),
+            },
+            required: ["prompt"],
+          )
+        ),
+      ])],
+    }
 
     getter chat : Models::Chat
-    getter data : Chat::Request
+    getter data = Deque(Gemini::Content).new(MAX_MESSAGES)
     # Send media using telegram API
     getter media = [] of Tourmaline::InputMediaPhoto
 
     def initialize(chat_id)
       @chat = Models::Chat.find!(chat_id)
-      @data = Chat::Request.new Chat::Content.new(system_role)
-      @data.tools = [TOOL]
-
-      @data.generation_config = Chat::Request::GenerationConfig.new(
-        max_output_tokens: MAX_TOKENS
-      )
-
-      # More testing needed but default seems to be very strict
-      @data.safety_settings = [
-        Chat::SafetySetting.new(:HARM_CATEGORY_SEXUALLY_EXPLICIT, :BLOCK_NONE),
-        Chat::SafetySetting.new(:HARM_CATEGORY_HATE_SPEECH, :BLOCK_NONE),
-        Chat::SafetySetting.new(:HARM_CATEGORY_HARASSMENT, :BLOCK_NONE),
-        Chat::SafetySetting.new(:HARM_CATEGORY_DANGEROUS_CONTENT, :BLOCK_NONE),
-      ]
+      @model = Gemini::GenerativeModel.new(**MODEL_CONFIG, system_instruction: Gemini::Content.new(system_role))
 
       load
     end
 
+    # Keep maximum size
+    def push(message : Gemini::Content)
+      data.shift if data.size >= MAX_MESSAGES
+      data.push message
+
+      message
+    end
+
     def load
       if messages = Redis.get("turquoise:eloquent:chat:#{chat.id}")
-        @data.contents = @data.contents.class.from_json(messages)
+        @data = data.class.from_json(messages)
       else
         clear
       end
     end
 
     def save!
-      Redis.set "turquoise:eloquent:chat:#{chat.id}", @data.contents.to_json
+      Redis.set "turquoise:eloquent:chat:#{chat.id}", data.to_json
     end
 
     # Reset chat messages.
     def clear
-      @data.contents.clear
+      data.clear
       Redis.del "turquoise:eloquent:chat:#{chat.id}"
-    end
-
-    private def request(body : Chat::Request) : Chat::Result
-      Log.debug { "eloquent -- #{chat.id}: #{body.to_pretty_json}" }
-      response = HTTP::Client.post "#{ENDPOINT}?key=#{ENV["ELOQUENT_API_KEY"]}", body: body.to_json, headers: HEADERS
-      content_type = MIME::MediaType.parse(response.headers["Content-Type"])
-
-      case content_type.media_type
-      when "application/json"
-        begin
-          Chat::Result.from_json response.body
-        rescue ex : JSON::SerializableError
-          error = Error.from_json response.body, root: "error"
-          raise %(eloquent -- #{chat.id}: Error #{error.code} - "#{error.message}")
-        end
-      else
-        raise "eloquent -- Unknown Content-Type: #{response.headers["Content-Type"]}"
-      end
     end
 
     # private def request(body : Prompt::Request)
@@ -106,29 +88,29 @@ module Turquoise
     #   end
     # end
 
-    def generate(text : String) : Chat::Content?
-      @data << Chat::Content.new text, :user
-      res = request(@data)
-      candidate = res.candidates.first
+    def generate(text : String)
+      push Gemini::Content.new(text, :user)
+      response = @model.generate_content(data)
 
-      if candidate.content.nil?
+      if (candidate = response.candidates.first) && candidate.content.nil?
         Log.warn { %(eloquent -- #{chat.id}: Finished by `#{candidate.finish_reason}` -> "#{text}") }
         return
       end
 
-      message = Chat::Content.new candidate.content!.parts, :model
-      function_calling_handler pointerof(message)
+      # message = Gemini::Content.new response.text, :model
+      function_calling_handler pointerof(response)
 
-      @data << message
-      message
+      # push message
+      push Gemini::Content.new(response.text, :model)
+      response
     end
 
-    def function_calling_handler(message : Chat::Content*)
-      function_parts = [] of Chat::Part
+    def function_calling_handler(response : Gemini::GenerateContentResponse*)
+      function_parts = [] of Gemini::Part
 
       # Execute function calling
-      message.value.parts.each &.function_call? do |func_call|
-        return unless func_call.is_a?(Chat::FunctionCall)
+      response.value.parts.each &.function_call? do |func_call|
+        return unless func_call.is_a?(Gemini::FunctionCall)
         case func_call.name
         when "send_selfie_image"
           function_parts << send_selfie_image(func_call)
@@ -136,30 +118,30 @@ module Turquoise
           function_parts << send_custom_image(func_call)
         else
           # TODO: Undefined tool call
-          function_parts << Chat::Part.new("TODO: #{func_call}")
+          function_parts << Gemini::Part.new("TODO: #{func_call}")
         end
       end
 
       # Handle function calling `Parts` result
       if function_parts.present?
-        @data << message.value
-        @data << Chat::Content.new function_parts, :function
+        push Gemini::Content.new(response.value.parts, :model)
+        push Gemini::Content.new(function_parts, :function)
 
-        res = request(@data)
+        res = @model.generate_content(data)
         # Message will receive text part of function calling response
-        message.value.parts = [Chat::Part.new(res.candidates.first.content.to_s)]
+        response.value = res
       end
     end
 
-    def send_selfie_image(func_call : Chat::FunctionCall) : Chat::Part
+    def send_selfie_image(func_call : Gemini::FunctionCall) : Gemini::Part
       selfie_path = random_selfie
       description = File.basename(selfie_path, ".jpg")
       media << Tourmaline::InputMediaPhoto.new(media: selfie_path)
 
-      Chat::Part.new(
-        Chat::FunctionResponse.new(
+      Gemini::Part.new(
+        Gemini::FunctionResponse.new(
           func_call.name,
-          JSON.parse(%({"image": { "description": "#{description}."}}))
+          JSON.parse(%({ "description": "#{description}."}))
         )
       )
     end
@@ -169,7 +151,7 @@ module Turquoise
       Dir.glob(File.join(dir, "/*.jpg")).sample
     end
 
-    def send_custom_image(func_call : Chat::FunctionCall) : Chat::Part
+    def send_custom_image(func_call : Gemini::FunctionCall) : Gemini::Part
       # TODO: New method for image generation
       # req = Prompt::Request.new(tool_call.args["prompt"], 20)
       # tmp = request(req)
@@ -178,10 +160,10 @@ module Turquoise
       #   caption: %("#{func_call.args.try &.["prompt"]}")
       # )
 
-      Chat::Part.new(
-        Chat::FunctionResponse.new(
+      Gemini::Part.new(
+        Gemini::FunctionResponse.new(
           func_call.name,
-          JSON.parse(%({"image": { "description": "#{func_call.args.try &.["prompt"]}."}}))
+          JSON.parse(%({ "description": "#{func_call.args.try &.["prompt"]}."}))
           # JSON.parse(%({"status": "success"}))
         )
       )
