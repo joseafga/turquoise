@@ -28,15 +28,15 @@ module Turquoise
 
             if eloquent.media.size == 1
               File.open(eloquent.media.first.media) do |file|
-                Bot.send_photo **options.merge({photo: file, caption: eloquent.media.first.caption})
+                Bot.send_photo **options, photo: file, caption: eloquent.media.first.caption
               end
             elsif eloquent.media.size > 1
-              Bot.send_media_group **options.merge({media: eloquent.media})
+              Bot.send_media_group **options, media: eloquent.media
             end
           end
 
           return if text.empty?
-          Bot.send_message **options.merge({text: text})
+          Bot.send_message **options, text: text
         end
       end
 
