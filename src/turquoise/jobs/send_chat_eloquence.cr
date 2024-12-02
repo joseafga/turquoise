@@ -10,14 +10,12 @@ module Turquoise
       throttle limit: 6, per: 1.minute
 
       def perform
+        options = {chat_id: chat_id, reply_to_message_id: message_id_or_nil}
         @eloquent = Eloquent.new(chat_id)
 
         if eloquent = @eloquent
           response = eloquent.generate(text)
-          options = {chat_id: chat_id, reply_to_message_id: message_id_or_nil}
-
-          return if response.nil? # no message to send
-          text = Helpers.escape_md(response.text)
+          text = Helpers.escape_md(response)
 
           if eloquent.media.present?
             # Merge response as caption if caption no exists

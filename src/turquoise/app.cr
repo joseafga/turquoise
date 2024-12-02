@@ -15,8 +15,8 @@ Log.setup do |c|
   c.bind "*", :warn, backend
   c.bind "tourmaline.*", :info, backend
   c.bind "mosquito.*", :info, backend
-  c.bind "pubsubhubbub", :debug, backend
-  c.bind "gemini", :debug, backend
+  c.bind "pubsubhubbub.*", :debug, backend
+  c.bind "gemini.*", :debug, backend
   c.bind "turquoise.*", :debug, backend
 end
 

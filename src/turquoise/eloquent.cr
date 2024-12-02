@@ -8,10 +8,11 @@ module Turquoise
       ),
       # More testing needed but default seems to be very strict
       safety_settings: [
-        Gemini::SafetySetting.new(:HARM_CATEGORY_SEXUALLY_EXPLICIT, :BLOCK_NONE),
-        Gemini::SafetySetting.new(:HARM_CATEGORY_HATE_SPEECH, :BLOCK_NONE),
-        Gemini::SafetySetting.new(:HARM_CATEGORY_HARASSMENT, :BLOCK_NONE),
-        Gemini::SafetySetting.new(:HARM_CATEGORY_DANGEROUS_CONTENT, :BLOCK_NONE),
+        Gemini::SafetySetting.new(:HarmCategorySexuallyExplicit, :BlockNone),
+        Gemini::SafetySetting.new(:HarmCategoryHateSpeech, :BlockNone),
+        Gemini::SafetySetting.new(:HarmCategoryHarassment, :BlockNone),
+        Gemini::SafetySetting.new(:HarmCategoryDangerousContent, :BlockNone),
+        Gemini::SafetySetting.new(:HarmCategoryCivicIntegrity, :BlockNone),
       ],
       # setup function calling
       tools: [Gemini::Tool.new([
@@ -23,10 +24,10 @@ module Turquoise
           "send_custom_image",
           description: "Send an image using AI. Call this when you need to create a custom image, for example when they ask for 'Create an image of a dog'.",
           parameters: Gemini::Schema.new(
-            type: :OBJECT,
+            type: :object,
             properties: {
               "prompt" => Gemini::Schema.new(
-                type: :STRING,
+                type: :string,
                 description: "Description of what you want to create.",
               ),
             },
@@ -88,21 +89,18 @@ module Turquoise
     #   end
     # end
 
-    def generate(text : String)
+    def generate(text : String) : String
       push Gemini::Content.new(text, :user)
       response = @model.generate_content(data)
 
-      if (candidate = response.candidates.first) && candidate.content.nil?
-        Log.warn { %(eloquent -- #{chat.id}: Finished by `#{candidate.finish_reason}` -> "#{text}") }
-        return
-      end
-
-      # message = Gemini::Content.new response.text, :model
       function_calling_handler pointerof(response)
-
-      # push message
       push Gemini::Content.new(response.text, :model)
-      response
+
+      response.text
+    rescue ex : Gemini::MissingCandidatesException
+      "Não posso responder sua mensagem. Motivo: '#{ex.block_reason.to_s.underscore.titleize(underscore_to_space: true)}'"
+    rescue ex : Gemini::MissingContentException
+      "Não posso responder sua mensagem. Motivo: '#{ex.finish_reason.to_s.underscore.titleize(underscore_to_space: true)}'"
     end
 
     def function_calling_handler(response : Gemini::GenerateContentResponse*)
