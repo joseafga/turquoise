@@ -28,7 +28,11 @@ module Turquoise
             properties: {
               "prompt" => Gemini::Schema.new(
                 type: :string,
-                description: "Description of what you want to create.",
+                description: "Description of the image you want to generate. Translated into English.",
+              ),
+              "num_steps" => Gemini::Schema.new(
+                type: :integer,
+                description: "Image quality. Between 1 and 8, higher values, higher quality, default is 4.",
               ),
             },
             required: ["prompt"],
@@ -90,42 +94,6 @@ module Turquoise
         # Message will receive text part of function calling response
         response.value = res
       end
-    end
-
-    def send_selfie_image(func_call : Gemini::FunctionCall) : Gemini::Part
-      selfie_path = random_selfie
-      description = File.basename(selfie_path, ".jpg")
-      media << Tourmaline::InputMediaPhoto.new(media: selfie_path)
-
-      Gemini::Part.new(
-        Gemini::FunctionResponse.new(
-          func_call.name,
-          JSON.parse(%({ "description": "#{description}."}))
-        )
-      )
-    end
-
-    def random_selfie : String
-      dir = File.expand_path("../../img/pictures/", __DIR__)
-      Dir.glob(File.join(dir, "/*.jpg")).sample
-    end
-
-    def send_custom_image(func_call : Gemini::FunctionCall) : Gemini::Part
-      # TODO: New method for image generation
-      # req = Prompt::Request.new(tool_call.args["prompt"], 20)
-      # tmp = request(req)
-      # media << Tourmaline::InputMediaPhoto.new(
-      #   media: tmp.path,
-      #   caption: %("#{func_call.args.try &.["prompt"]}")
-      # )
-
-      Gemini::Part.new(
-        Gemini::FunctionResponse.new(
-          func_call.name,
-          JSON.parse(%({ "description": "#{func_call.args.try &.["prompt"]}."}))
-          # JSON.parse(%({"status": "success"}))
-        )
-      )
     end
 
     # TODO: internationalization
@@ -219,3 +187,6 @@ module Turquoise
     end
   end
 end
+
+require "./eloquent/send_custom_image"
+require "./eloquent/send_selfie_image"
