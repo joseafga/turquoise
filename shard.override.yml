@@ -1,0 +1,7 @@
+dependencies:
+  db:
+    github: crystal-lang/crystal-db
+    version: ~> 0.13
+  pg:
+    github: will/crystal-pg
+    version: ~> 0.28

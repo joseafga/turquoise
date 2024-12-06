@@ -38,69 +38,30 @@ module Turquoise
     }
 
     getter chat : Models::Chat
-    getter data = Deque(Gemini::Content).new(MAX_MESSAGES)
+    getter messages : Messages
     # Send media using telegram API
     getter media = [] of Tourmaline::InputMediaPhoto
 
     def initialize(chat_id)
       @chat = Models::Chat.find!(chat_id)
       @model = Gemini::GenerativeModel.new(**MODEL_CONFIG, system_instruction: Gemini::Content.new(system_role))
-
-      load
+      @messages = Messages.new("turquoise:eloquent:chat:#{chat.id}").load
     end
-
-    # Keep maximum size
-    def push(message : Gemini::Content)
-      data.shift if data.size >= MAX_MESSAGES
-      data.push message
-
-      message
-    end
-
-    def load
-      if messages = Redis.get("turquoise:eloquent:chat:#{chat.id}")
-        @data = data.class.from_json(messages)
-      else
-        clear
-      end
-    end
-
-    def save!
-      Redis.set "turquoise:eloquent:chat:#{chat.id}", data.to_json
-    end
-
-    # Reset chat messages.
-    def clear
-      data.clear
-      Redis.del "turquoise:eloquent:chat:#{chat.id}"
-    end
-
-    # private def request(body : Prompt::Request)
-    #   Log.debug { "eloquent -- #{chat.id}: #{body.to_pretty_json}" }
-    #   response = HTTP::Client.post "#{ENDPOINT}#{MODEL[:text_to_image]}", body: body.to_json, headers: HEADERS
-
-    #   case response.headers["Content-Type"]
-    #   when "image/png"
-    #     File.tempfile(suffix: ".png") do |file|
-    #       file.print response.body
-    #     end
-    #   else
-    #     raise "eloquent -- Unknown Content-Type: #{response.headers["Content-Type"]}"
-    #   end
-    # end
 
     def generate(text : String) : String
-      push Gemini::Content.new(text, :user)
-      response = @model.generate_content(data)
+      messages.push Gemini::Content.new(text, :user)
+      response = @model.generate_content(messages.value)
 
       function_calling_handler pointerof(response)
-      push Gemini::Content.new(response.text, :model)
+      messages.push Gemini::Content.new(response.text, :model)
 
       response.text
     rescue ex : Gemini::MissingCandidatesException
-      "Não posso responder sua mensagem. Motivo: '#{ex.block_reason.to_s.underscore.titleize(underscore_to_space: true)}'"
+      messages.rollback
+      "Não posso responder sua mensagem: '#{ex.block_reason.to_s.underscore.titleize(underscore_to_space: true)}'" # TODO: internationalization
     rescue ex : Gemini::MissingContentException
-      "Não posso responder sua mensagem. Motivo: '#{ex.finish_reason.to_s.underscore.titleize(underscore_to_space: true)}'"
+      messages.rollback
+      "Não posso responder sua mensagem: '#{ex.finish_reason.to_s.underscore.titleize(underscore_to_space: true)}'" # TODO: internationalization
     end
 
     def function_calling_handler(response : Gemini::GenerateContentResponse*)
@@ -122,10 +83,10 @@ module Turquoise
 
       # Handle function calling `Parts` result
       if function_parts.present?
-        push Gemini::Content.new(response.value.parts, :model)
-        push Gemini::Content.new(function_parts, :function)
+        messages.push Gemini::Content.new(response.value.parts, :model)
+        messages.push Gemini::Content.new(function_parts, :function)
 
-        res = @model.generate_content(data)
+        res = @model.generate_content(messages.value)
         # Message will receive text part of function calling response
         response.value = res
       end
@@ -179,6 +140,82 @@ module Turquoise
     # Check if `#media` has captions
     def media_captions? : Bool
       !!media.bsearch(&.caption)
+    end
+
+    struct Messages
+      getter? active = false
+      property current = [] of Gemini::Content
+      property future = [] of Gemini::Content
+
+      def initialize(@key : String)
+      end
+
+      def transaction
+        @active = true
+      end
+
+      def rollback
+        future.clear
+        @active = false
+      end
+
+      def commit
+        unless active? # Cancelled
+          Log.warn { "eloquent -- Attempt to commit without active transaction" }
+          return
+        end
+
+        current.concat future
+        Redis.rpush @key, future.map(&.to_json)
+        Redis.ltrim @key, -MAX_MESSAGES, -1
+        future.clear
+        @active = false
+      end
+
+      def transaction(&)
+        transaction
+        yield
+        commit
+      end
+
+      def value
+        current + future
+      end
+
+      def push(message)
+        unless active? # Cancelled
+          Log.warn { "eloquent -- Cannot push without active transaction" }
+          return
+        end
+
+        future.push message
+      end
+
+      # Alias to `#push`
+      def <<(message)
+        push(message)
+      end
+
+      # Load messages from persistent memory to volatile memory
+      def load
+        Redis.lrange(@key, 0, -1).each do |message|
+          current << Gemini::Content.from_json message.as(String)
+        end
+        self
+      end
+
+      # Remove messages from volatile memory
+      def clear
+        future.clear
+        current.clear
+        self
+      end
+
+      # Remove messages from persistent memory
+      def delete
+        Redis.del @key
+        self
+      end
     end
   end
 end

@@ -35,7 +35,7 @@ module Turquoise
   USERAGENT = "Turquoise/#{VERSION}"
   Log       = ::Log.for("turquoise.app")
   Redis     = ::Redis::Client.new(URI.parse ENV["REDIS_URL"])
-  Bot       = Tourmaline::Client.new(ENV["BOT_TOKEN"])
+  Bot       = ::Tourmaline::Client.new(ENV["BOT_TOKEN"])
 
   PubSubHubbub.configure do |settings|
     settings.callback = File.join(ENV["HOST_URL"], ENV["YT_WEBHOOK_PATH"])

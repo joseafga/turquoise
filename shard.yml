@@ -21,13 +21,16 @@ dependencies:
     branch: main
   gemini:
     github: joseafga/gemini.cr
+    branch: main
   pg:
     github: will/crystal-pg
+    version: ~> 0.28
   granite:
     github: amberframework/granite
     branch: master
   redis:
     github: jgaskins/redis
+    version: ~> 0.9
   mosquito:
     github: mosquito-cr/mosquito
     commit: 0d77226

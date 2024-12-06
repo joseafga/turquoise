@@ -11,9 +11,9 @@ module Turquoise
 
       def perform
         options = {chat_id: chat_id, reply_to_message_id: message_id_or_nil}
-        @eloquent = Eloquent.new(chat_id)
+        eloquent = Eloquent.new(chat_id)
 
-        if eloquent = @eloquent
+        eloquent.messages.transaction do
           response = eloquent.generate(text)
           text = Helpers.escape_md(response)
 
@@ -33,13 +33,9 @@ module Turquoise
             end
           end
 
-          return if text.empty?
+          next if text.empty?
           Bot.send_message **options, text: text
         end
-      end
-
-      after do
-        @eloquent.try(&.save!) if succeeded?
       end
 
       def reschedule_interval(retry_count)
