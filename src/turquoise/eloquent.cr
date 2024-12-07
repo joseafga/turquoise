@@ -1,3 +1,6 @@
+require "./eloquent/messages"
+require "./eloquent/extra"
+
 module Turquoise
   class Eloquent
     MAX_MESSAGES = 10
@@ -52,6 +55,20 @@ module Turquoise
       @messages = Messages.new("turquoise:eloquent:chat:#{chat.id}").load
     end
 
+    # TODO: internationalization
+    def system_role
+      if chat.type == "private"
+        "#{ENV["ELOQUENT_ROLE"]} You are in a private chat with #{chat.first_name}."
+      else
+        "#{ENV["ELOQUENT_ROLE"]} You are in a group chatting with friends."
+      end
+    end
+
+    # Check if `#media` has captions
+    def media_captions? : Bool
+      !!media.find(&.caption)
+    end
+
     def generate(text : String) : String
       messages.push Gemini::Content.new(text, :user)
       response = @model.generate_content(messages.value)
@@ -96,97 +113,65 @@ module Turquoise
       end
     end
 
-    # TODO: internationalization
-    def system_role
-      if chat.type == "private"
-        "#{ENV["ELOQUENT_ROLE"]} You are in a private chat with #{chat.first_name}."
-      else
-        "#{ENV["ELOQUENT_ROLE"]} You are in a group chatting with friends."
+    def send_selfie_image(func_call : Gemini::FunctionCall) : Gemini::Part
+      begin
+        selfie_path = random_selfie
+        description = File.basename(selfie_path, ".jpg")
+        response = %({"success": "true", "description": "#{description}."})
+
+        media << Tourmaline::InputMediaPhoto.new(media: selfie_path)
+      rescue
+        response = %({"success": "false"})
       end
+
+      Gemini::Part.new(Gemini::FunctionResponse.new(
+        func_call.name,
+        JSON.parse(response)
+      ))
     end
 
-    # Check if `#media` has captions
-    def media_captions? : Bool
-      !!media.find(&.caption)
+    def random_selfie : String
+      dir = File.expand_path("../../img/pictures/", __DIR__)
+      Dir.glob(File.join(dir, "/*.jpg")).sample
     end
 
-    struct Messages
-      getter? active = false
-      property current = [] of Gemini::Content
-      property future = [] of Gemini::Content
-
-      def initialize(@key : String)
-      end
-
-      def transaction
-        @active = true
-      end
-
-      def rollback
-        future.clear
-        @active = false
-      end
-
-      def commit
-        unless active? # Cancelled
-          Log.warn { "eloquent -- Attempt to commit without active transaction" }
-          return
+    def send_custom_image(func_call : Gemini::FunctionCall) : Gemini::Part
+      begin
+        args = func_call.args.not_nil!
+        prompt = args["prompt"].as_s
+        if num_steps = args["num_steps"]?.try &.as_i
+          num_steps = nil unless (1..8).includes?(num_steps)
         end
 
-        current.concat future
-        Redis.rpush @key, future.map(&.to_json)
-        Redis.ltrim @key, -MAX_MESSAGES, -1
-        future.clear
-        @active = false
+        result = request_custom_image(ImageModel::Request.new(prompt, num_steps))
+        response = %({"success": "true"})
+
+        media << Tourmaline::InputMediaPhoto.new(
+          media: result.to_tempfile.path,
+          caption: %("#{prompt}")
+        )
+      rescue
+        response = %({"success": "false"})
       end
 
-      def transaction(&)
-        transaction
-        yield
-        commit
-      end
+      Gemini::Part.new(Gemini::FunctionResponse.new(
+        func_call.name,
+        JSON.parse(response)
+      ))
+    end
 
-      def value
-        current + future
-      end
+    private def request_custom_image(body : ImageModel::Request)
+      Log.debug { "eloquent -- Requesting -> #{chat.id}: #{body.to_pretty_json}" }
+      json = HTTP::Client.post(
+        "https://api.cloudflare.com/client/v4/accounts/#{ENV["CF_ACCOUNT_ID"]}/ai/run/@cf/black-forest-labs/flux-1-schnell",
+        body: body.to_json,
+        headers: HTTP::Headers{"Authorization" => "Bearer #{ENV["CF_API_KEY"]}", "Content-Type" => "application/json"}
+      )
 
-      def push(message)
-        unless active? # Cancelled
-          Log.warn { "eloquent -- Cannot push without active transaction" }
-          return
-        end
+      response = ImageModel::Response.from_json(json.body)
 
-        future.push message
-      end
-
-      # Alias to `#push`
-      def <<(message)
-        push(message)
-      end
-
-      # Load messages from persistent memory to volatile memory
-      def load
-        Redis.lrange(@key, 0, -1).each do |message|
-          current << Gemini::Content.from_json message.as(String)
-        end
-        self
-      end
-
-      # Remove messages from volatile memory
-      def clear
-        future.clear
-        current.clear
-        self
-      end
-
-      # Remove messages from persistent memory
-      def delete
-        Redis.del @key
-        self
-      end
+      return response.result if response.success?
+      raise "eloquent -- Unsuccessfully request. #{response.errors.join(",", &.to_s)}"
     end
   end
 end
-
-require "./eloquent/send_custom_image"
-require "./eloquent/send_selfie_image"
