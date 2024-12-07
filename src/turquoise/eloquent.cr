@@ -31,11 +31,11 @@ module Turquoise
             properties: {
               "prompt" => Gemini::Schema.new(
                 type: :string,
-                description: "Description of the image you want to generate. Translated into English.",
+                description: "Description of the image you want to generate. Translated to English.",
               ),
               "num_steps" => Gemini::Schema.new(
                 type: :integer,
-                description: "Image quality. Between 1 and 8, higher values, higher quality, default is 4.",
+                description: "Image quality. Default is 4, but value can be between 1 and 8.",
               ),
             },
             required: ["prompt"],
