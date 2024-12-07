@@ -18,7 +18,7 @@ module Turquoise
     end
 
     def random_selfie : String
-      dir = File.expand_path("../../img/pictures/", __DIR__)
+      dir = File.expand_path("../../../img/pictures/", __DIR__)
       Dir.glob(File.join(dir, "/*.jpg")).sample
     end
   end

@@ -107,7 +107,7 @@ module Turquoise
 
     # Check if `#media` has captions
     def media_captions? : Bool
-      !!media.bsearch(&.caption)
+      !!media.find(&.caption)
     end
 
     struct Messages
