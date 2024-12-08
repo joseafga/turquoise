@@ -35,7 +35,7 @@ module Turquoise
               ),
               "num_steps" => Gemini::Schema.new(
                 type: :integer,
-                description: "Image quality. Default is 4, but value can be between 1 and 8.",
+                description: "Image quality from 1 to 8. 1 is low quality, 8 is high, default is 4.",
               ),
             },
             required: ["prompt"],
@@ -78,11 +78,9 @@ module Turquoise
 
       response.text
     rescue ex : Gemini::MissingCandidatesException
-      messages.rollback
-      "Não posso responder sua mensagem: '#{ex.block_reason.to_s.underscore.titleize(underscore_to_space: true)}'" # TODO: internationalization
+      _error_message(ex.block_reason)
     rescue ex : Gemini::MissingContentException
-      messages.rollback
-      "Não posso responder sua mensagem: '#{ex.finish_reason.to_s.underscore.titleize(underscore_to_space: true)}'" # TODO: internationalization
+      _error_message(ex.finish_reason)
     end
 
     def function_calling_handler(response : Gemini::GenerateContentResponse*)
@@ -172,6 +170,12 @@ module Turquoise
 
       return response.result if response.success?
       raise "eloquent -- Unsuccessfully request. #{response.errors.join(",", &.to_s)}"
+    end
+
+    private def _error_message(reason) : String
+      messages.rollback
+      # TODO: internationalization
+      "Não posso responder sua mensagem: *#{reason.to_s.underscore.titleize(underscore_to_space: true)}*"
     end
   end
 end
