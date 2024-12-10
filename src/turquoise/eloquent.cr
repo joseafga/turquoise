@@ -70,11 +70,11 @@ module Turquoise
     end
 
     def generate(text : String) : String
-      messages.push Gemini::Content.new(text, :user)
+      messages.push Gemini::Content.new(text, role: :user)
       response = @model.generate_content(messages.value)
 
       function_calling_handler pointerof(response)
-      messages.push Gemini::Content.new(response.text, :model)
+      messages.push Gemini::Content.new(response.text, role: :model)
 
       response.text
     rescue ex : Gemini::MissingCandidatesException
@@ -102,8 +102,8 @@ module Turquoise
 
       # Handle function calling `Parts` result
       if function_parts.present?
-        messages.push Gemini::Content.new(response.value.parts, :model)
-        messages.push Gemini::Content.new(function_parts, :function)
+        messages.push Gemini::Content.new(response.value.parts, role: :model)
+        messages.push Gemini::Content.new(function_parts, role: :function)
 
         res = @model.generate_content(messages.value)
         # Message will receive text part of function calling response
